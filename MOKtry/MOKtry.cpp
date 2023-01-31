@@ -9,7 +9,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <gmp.h>
-
+#include "MOKtry.hpp"
+#include <time.h>
 
 // Spuštění programu: Ctrl+F5 nebo nabídka Ladit > Spustit bez ladění
 // Ladění programu: F5 nebo nabídka Ladit > Spustit ladění
@@ -21,6 +22,134 @@
 //   4. K zobrazení chyb použijte okno Seznam chyb.
 //   5. Pokud chcete vytvořit nové soubory kódu, přejděte na Projekt > Přidat novou položku. Pokud chcete přidat do projektu existující soubory kódu, přejděte na Projekt > Přidat existující položku.
 //   6. Pokud budete chtít v budoucnu znovu otevřít tento projekt, přejděte na Soubor > Otevřít > Projekt a vyberte příslušný soubor .sln.
+uint8_t* tutu(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCount, uECC_word_t* randomReturn) {
+
+    // Values init
+    //const char* q_EC = "0100000000000000000001f4c8f927aed3ca752257";
+    //char* q_EC = reinterpret_cast<char*>(n);
+   /* printf("bytecount: %d:", 20);
+    printf("\n");
+
+    for (int i = 0; i < 10; i++) {
+        printf("%x", q_EC[i]);
+    }*/
+    //char* q_EC = "74";
+
+    Setup_SGM setup;
+    Manager_S m_secret;
+
+
+    generate_nizkpk_setup(&setup, &m_secret, n, man_sec, byteCount);
+
+    JSON_serialize_Setup_par(&setup);
+    Setup_SGM setup2;
+    JSON_deserialize_Setup_par(&setup2);
+
+
+    E_1 e1 = generate_e1(&setup, &m_secret);
+
+    JSON_serialize_e1(&e1);
+    E_1 e11;
+    JSON_deserialize_e1(&e11);
+
+
+    Sender_S s_secret;
+    E_2 e2 = generate_e2(&setup2, &s_secret, &e11, client_key, byteCount);
+
+    JSON_serialize_e2(&e2);
+    E_2 e22;
+    JSON_deserialize_e2(&e22);
+
+
+    Sig_star sig = decrypt_e2(&setup2, &m_secret, &e22);
+
+    JSON_serialize_sig_star(&sig);
+    Sig_star sig2;
+    JSON_deserialize_sig_star(&sig2);
+
+    int verify = verify_sig(&sig2, &m_secret, &s_secret, &setup2);
+    if (verify == 1) {
+        printf("ERROR: Test NOT conducted successfully\n");
+    }
+
+    //ZK
+    ZK_man zk;
+    ZK_man_private zk_priv;
+
+    ZK_compute_Ts_Issuer(&m_secret,&setup, &zk, &zk_priv);
+    generate_E_for_PK(&setup, &zk);
+    ZK_compute_Zs_Issuer(&m_secret, &setup, &zk, &zk_priv);
+    
+    if (check_issuer_zk(&setup, &zk, &e1))
+        printf("ZK checked sucesfully\n");
+    else
+    {
+        printf("ZK failed \n");
+    }
+
+    /*mpz_t inv;
+    mpz_init(inv);
+    mpz_invert(inv, s_secret.r1, setup.q_EC);
+    mpz_mul(sig.sig_star, sig.sig_star, inv);
+    mpz_mod(sig.sig_star, sig.sig_star, setup.q_EC);*/
+
+
+    
+
+    
+    if (byteCount == 20) {
+        uint8_t expik[20];
+        mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
+        uint8_t rand[20];
+        mpz_export(rand, NULL, 1, sizeof(rand[0]), 0, 0, s_secret.r1);
+        uECC_vli_bytesToNative(randomReturn, rand, byteCount); //we return randomized sum
+
+        return expik;
+    }
+    else if (byteCount == 24) {
+        uint8_t expik[24];
+        mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
+        uint8_t rand[24];
+        mpz_export(rand, NULL, 1, sizeof(rand[0]), 0, 0, s_secret.r1);
+        uECC_vli_bytesToNative(randomReturn, rand, byteCount);
+        return expik;
+    }
+    else if (byteCount == 28) {
+        uint8_t expik[28];
+        mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
+        uint8_t rand[28];
+        mpz_export(rand, NULL, 1, sizeof(rand[0]), 0, 0, s_secret.r1);
+        uECC_vli_bytesToNative(randomReturn, rand, byteCount);
+        return expik;
+    }
+    else {
+        uint8_t expik[32];
+        mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
+        uint8_t rand[32];
+        mpz_export(rand, NULL, 1, sizeof(rand[0]), 0, 0, s_secret.r1);
+        uECC_vli_bytesToNative(randomReturn, rand, byteCount);
+        return expik;
+    }
+
+
+
+    //char  c{ '\0' };
+    //char* pchar{ &c };
+    //mpz_get_str(pchar, 16, sig.sig_star);
+
+    //gmp_printf("Sk_m: %Zd\n", m_secret.sk_m);
+    //gmp_printf("Sk_i: %Zd\n", s_secret.sk_i);
+
+
+    //gmp_printf("r: %Zd\n", m_secret.r);
+    //gmp_printf("r1: %Zd\n", s_secret.r1);
+    //gmp_printf("r2: %Zd\n", s_secret.r2);
+    //gmp_printf("r_bar: %Zd\n", s_secret.r_bar);
+
+    return NULL;
+}
+
+
 void setup()
 {
     // put your setup code here, to run once:
@@ -30,11 +159,15 @@ void setup()
     int c;
     const struct uECC_Curve_t* curves[5];
     int num_curves = 0;
+    bool compareWithNormal = true;
+  
 #if uECC_SUPPORTS_secp160r1
     curves[num_curves++] = uECC_secp160r1();
+    
 #endif
-#if uECC_SUPPORTS_secp192r1
+/*#if uECC_SUPPORTS_secp192r1
     curves[num_curves++] = uECC_secp192r1();
+    
 #endif
 #if uECC_SUPPORTS_secp224r1
     curves[num_curves++] = uECC_secp224r1();
@@ -44,14 +177,24 @@ void setup()
 #endif
 #if uECC_SUPPORTS_secp256k1
     curves[num_curves++] = uECC_secp256k1();
-#endif
+#endif*/
 
     for (c = 0; c < num_curves; ++c)
     {
-        printf("%d",c);
+        
         
         const struct uECC_Curve_t* curve = curves[c];
-
+        if (curve == uECC_secp160r1())
+            printf("Testing curve secp160r1... \n");
+        else if(curve== uECC_secp192r1())
+            printf("Testing curve secp192r1... \n");
+        else if(curve == uECC_secp224r1())
+            printf("Testing curve secp224r1... \n");
+        else if (curve == uECC_secp256r1())
+            printf("Testing curve secp256r1... \n");
+        else if (curve == uECC_secp256k1())
+            printf("Testing curve secp256k1... \n");
+        
         const uECC_word_t* n = uECC_curve_n(curve);
         const uECC_word_t* g = uECC_curve_G(curve);
         const wordcount_t nativeCount = uECC_curve_num_words(curve);
@@ -214,18 +357,83 @@ void setup()
         uECC_generate_random_int(client_private, n, nativeNCount);
 
         //long a = millis();
-        issueModified(&parameters, &m_list, &x_list, sigma, &sigma_list,client_private);
+        //issueModified(&parameters, &m_list, &x_list, sigma, &sigma_list,client_private);
         //issue(&parameters, &m_list, &x_list, sigma, &sigma_list);
+        // 
+        //here we have 2party issue
         
+        printf("Starting the issue algorithms...\n");
+        clock_t startIssue = clock() / (CLOCKS_PER_SEC / 1000);
+        uECC_word_t* sum = new uECC_word_t[nativeNCount]();
+        SignGFirstHalf(&x_list, &m_list, &parameters, sum);
+
+        printf("Starting the 2-party computation...\n");
+        clock_t start = clock() / (CLOCKS_PER_SEC / 1000); //in ms
+
+        uECC_word_t* randInTwoParty = new uECC_word_t[nativeNCount]();
+        uint8_t* gotBack;
+        if (curve == uECC_secp160r1()) {
+            uint8_t nBytes[20];
+            uECC_vli_nativeToBytes(nBytes, byteCount, n);
+            uint8_t man_Sec[20];
+            uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
+            uint8_t client_Sec[24];
+            
+            uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
+            gotBack = tutu(nBytes, man_Sec, client_Sec, 20, randInTwoParty);
+            
+          
+
+        }
+        else if (curve == uECC_secp192r1()) {
+
+            uint8_t nBytes[24];
+            uECC_vli_nativeToBytes(nBytes, byteCount, n);
+            uint8_t man_Sec[24];
+            uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
+            uint8_t client_Sec[24];
+            uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
+            gotBack = tutu(nBytes, man_Sec, client_Sec, 24, randInTwoParty);
+        }
+        else if (curve == uECC_secp224r1()) {
+
+            uint8_t nBytes[28];
+            uECC_vli_nativeToBytes(nBytes, byteCount, n);
+            uint8_t man_Sec[28];
+            uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
+            uint8_t client_Sec[28];
+            uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
+            gotBack = tutu(nBytes, man_Sec, client_Sec, 28, randInTwoParty);
+        }
+        else {
+            uint8_t nBytes[32];
+            uECC_vli_nativeToBytes(nBytes, byteCount, n);
+            uint8_t man_Sec[32];
+            uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
+            uint8_t client_Sec[32];
+            uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
+            gotBack = tutu(nBytes, man_Sec, client_Sec, 32, randInTwoParty);
+            
+        }
+        uECC_vli_bytesToNative(sum, gotBack, byteCount);
+       
+        clock_t end = clock() / (CLOCKS_PER_SEC / 1000); //in ms
+        printf("2-party computation done, it took %d ms in total. \n", (end - start));
         
-        /*uint8_t* sigmaBytes = new uint8_t[byteCount]();
-        uECC_vli_nativeToBytes(sigmaBytes, byteCount, n);
-        printf("bytecount: %d:",byteCount);
-        printf("\n");
+
+
+        SignGSecondHalf(&x_list, &m_list, &parameters, sigma, sum);
+        signSigma(sigma, &x_list, &parameters, &sigma_list);
+
+        //here we remove the r1 from sigmas ie. the client derandomizes sigmas, but the issuer doesnt know sigmas
+        uECC_point_mult(sigma, sigma, randInTwoParty, curve);
+        for (int i = 0; i < ISSUED; i++) {
+            uECC_point_mult(sigma_list.get(i)->content, sigma_list.get(i)->content, randInTwoParty, curve);
+        }
+        clock_t endIssue = clock() / (CLOCKS_PER_SEC / 1000);
+        printf("Issue algorithms and derandomizing of sigmas is done. Issuing took %d ms in total.\n",(endIssue-startIssue));
+
         
-        for (int i = 0; i < byteCount; i++) {
-            printf("%x", sigmaBytes[i]);
-        }*/
         
         //std::cout << std::hex << static_cast<int>(sigmaBytes) << std::endl;
 
@@ -241,132 +449,67 @@ void setup()
         //declare(&parameters, nonce, sigma, &sigma_list, &m_list, sigma_A, e, s_r, &s_m_list);
 
         uECC_word_t* S_k = new uECC_word_t[nativeNCount]();
+        clock_t startDeclare = clock() / (CLOCKS_PER_SEC / 1000);
         declareModified(&parameters, nonce, sigma, &sigma_list, &m_list, sigma_A, e, s_r, &s_m_list,client_private,S_k);
+        clock_t endDeclare = clock() / (CLOCKS_PER_SEC / 1000);
 
+        printf("The declare algorithm is done, it took %d ms \n", (endDeclare-startDeclare));
         //b = millis();
         //Serial.print(" | ");
         //Serial.print(b - a);
 
         //a = millis();
         //bool passed = verify(&parameters, e, nonce, &s_m_list, s_r, sigma_A, &x_list, &m_list);
+        clock_t startVer = clock() / (CLOCKS_PER_SEC / 1000);
         bool passed = verifyModified(&parameters, e, nonce, &s_m_list, s_r, sigma_A, &x_list, &m_list,S_k);
+        clock_t endVer = clock() / (CLOCKS_PER_SEC / 1000);
         //b = millis();
         //Serial.print(" | ");
         //Serial.print(b - a);
 
-        printf(passed ? " || PASSED" : " || FAILED");
+        printf(passed ? "Result of KVAC verification: PASSED" : " Result of KVAC verification: FAILED");
         printf("\n");
+        printf("Verification took %d ms.\n",(endVer-startVer));
+       
 
+
+        //here we test the normal functions will it work?
+        if (compareWithNormal) {
+            printf("Now testing the unmodified KVAC for speed comparasion...\n");
+            start = clock() / (CLOCKS_PER_SEC / 1000);
+            issue(&parameters, &m_list, &x_list, sigma, &sigma_list);
+            end = clock() / (CLOCKS_PER_SEC / 1000);
+            printf("Issue algorithm took %d ms. \n", (end - start));
+
+            startDeclare = clock() / (CLOCKS_PER_SEC / 1000);
+            declare(&parameters, nonce, sigma, &sigma_list, &m_list, sigma_A, e, s_r, &s_m_list);
+            endDeclare = clock() / (CLOCKS_PER_SEC / 1000);
+            printf("The declare algorithm is done, it took %d ms \n", (endDeclare - startDeclare));
+
+            startVer = clock() / (CLOCKS_PER_SEC / 1000);
+            passed = verify(&parameters, e, nonce, &s_m_list, s_r, sigma_A, &x_list, &m_list);
+            endVer = clock() / (CLOCKS_PER_SEC / 1000);
+            printf(passed ? "Result of KVAC verification: PASSED" : " Result of KVAC verification: FAILED");
+            printf("\n");
+            printf("Verification took %d ms.\n", (endVer - startVer));
+            
+        }
+        printf("\n");
         //Serial.println();
     }
 }
 
-uint8_t *tutu(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCount) {
 
-    // Values init
-    //const char* q_EC = "0100000000000000000001f4c8f927aed3ca752257";
-    //char* q_EC = reinterpret_cast<char*>(n);
-
-   
-    
-    
-    
-    
-    
-   /* printf("bytecount: %d:", 20);
-    printf("\n");
-
-    for (int i = 0; i < 10; i++) {
-        printf("%x", q_EC[i]);
-    }*/
-    //char* q_EC = "74";
-
-    Setup_SGM setup;
-    Manager_S m_secret;
-
-    
-    generate_nizkpk_setup(&setup, &m_secret, n,man_sec,byteCount);
-
-    JSON_serialize_Setup_par(&setup);
-    Setup_SGM setup2;
-    JSON_deserialize_Setup_par(&setup2);
-
-
-    E_1 e1 = generate_e1(&setup, &m_secret);
-
-    JSON_serialize_e1(&e1);
-    E_1 e11;
-    JSON_deserialize_e1(&e11);
-
-
-    Sender_S s_secret;
-    E_2 e2 = generate_e2(&setup2, &s_secret, &e11,client_key,byteCount);
-
-    JSON_serialize_e2(&e2);
-    E_2 e22;
-    JSON_deserialize_e2(&e22);
-
-
-    Sig_star sig = decrypt_e2(&setup2, &m_secret, &e22);
-
-    JSON_serialize_sig_star(&sig);
-    Sig_star sig2;
-    JSON_deserialize_sig_star(&sig2);
-
-    int verify = verify_sig(&sig2, &m_secret, &s_secret, &setup2);
-    if (verify == 1) {
-        printf("ERROR: Test NOT conducted successfully\n");
-    }
-
-    mpz_t inv;
-    mpz_init(inv);
-    mpz_invert(inv, s_secret.r1, setup.q_EC);
-    mpz_mul(sig.sig_star, sig.sig_star, inv);
-    mpz_mod(sig.sig_star, sig.sig_star, setup.q_EC);
-
-    if (byteCount == 20) {
-        uint8_t expik[20];
-        mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
-        return expik;
-    }
-    else if (byteCount == 24) {
-        uint8_t expik[24];
-        mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
-        return expik;
-    }
-    else if (byteCount == 28) {
-        uint8_t expik[28];
-        mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
-        return expik;
-    }
-    else {
-        uint8_t expik[32];
-        mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
-        return expik;
-    }
-
-    
-
-    //char  c{ '\0' };
-    //char* pchar{ &c };
-    //mpz_get_str(pchar, 16, sig.sig_star);
-
-    //gmp_printf("Sk_m: %Zd\n", m_secret.sk_m);
-    //gmp_printf("Sk_i: %Zd\n", s_secret.sk_i);
-
-
-    //gmp_printf("r: %Zd\n", m_secret.r);
-    //gmp_printf("r1: %Zd\n", s_secret.r1);
-    //gmp_printf("r2: %Zd\n", s_secret.r2);
-    //gmp_printf("r_bar: %Zd\n", s_secret.r_bar);
-    
-    return NULL;
-}
 
 int main()
 {
-    std::cout << "Hello World!\n";
+    
     setup();
     
     //tutu();
 }
+/*extern "C" {
+    __declspec(dllexport) int workPls() {
+        setup();
+    }
+}*/

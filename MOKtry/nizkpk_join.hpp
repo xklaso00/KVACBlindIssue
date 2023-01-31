@@ -35,6 +35,26 @@ typedef struct
 
 } Manager_S;
 
+
+
+typedef struct
+{
+    mpz_t t1;
+    mpz_t t2;
+    mpz_t z1;
+    mpz_t z2;
+    mpz_t z3;
+    mpz_t e;
+} ZK_man;
+
+typedef struct
+{
+    mpz_t rho1;
+    mpz_t rho2;
+    mpz_t rho3;
+
+} ZK_man_private;
+
 typedef struct
 {
     mpz_t sk_i;
@@ -82,6 +102,14 @@ E_2 generate_e2(Setup_SGM* setup, Sender_S* s_secret, E_1* e1, uint8_t client_se
 Sig_star decrypt_e2(Setup_SGM* setup, Manager_S* m_secret, E_2* e2);
 
 int verify_sig(Sig_star* sig, Manager_S* m_secret, Sender_S* s_secret, Setup_SGM* setup);
+
+void generate_E_for_PK(Setup_SGM* setup, ZK_man* zk);
+
+void ZK_compute_Zs_Issuer(Manager_S* m_secret, Setup_SGM* setup, ZK_man* zk, ZK_man_private* zk_private);
+
+bool check_issuer_zk(Setup_SGM* setup, ZK_man* zk, E_1* e_1);
+
+void ZK_compute_Ts_Issuer(Manager_S* man_s, Setup_SGM* setup, ZK_man* zk, ZK_man_private* zk_private);
 
 int JSON_serialize_Setup_par(Setup_SGM* setup);
 

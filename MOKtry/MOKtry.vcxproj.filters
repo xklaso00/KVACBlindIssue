@@ -48,6 +48,9 @@
     <ClCompile Include="nizkpk_join.cpp">
       <Filter>Zdrojové soubory</Filter>
     </ClCompile>
+    <ClCompile Include="pyBindings.cpp">
+      <Filter>Zdrojové soubory</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="lib\micro-ecc\types.h">
@@ -77,6 +80,9 @@
     <ClInclude Include="nizkpk_join.hpp">
       <Filter>Hlavičkové soubory</Filter>
     </ClInclude>
+    <ClInclude Include="MOKtry.hpp">
+      <Filter>Hlavičkové soubory</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="lib\micro-ecc\asm_arm.inc">
@@ -102,6 +108,9 @@
     </None>
     <None Include="lib\gmplib\libgmp-13.dll" />
     <None Include="lib\gmplib\libgmpxx-9.dll" />
+    <None Include="export.def">
+      <Filter>Zdrojové soubory</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Library Include="lib\sslRAK\lib\libssl.lib" />

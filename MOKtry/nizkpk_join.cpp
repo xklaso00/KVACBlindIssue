@@ -66,7 +66,7 @@ void generate_g(mpz_t* n, mpz_t* n2, mpz_t* phi, mpz_t* g) {
         generate_r_from_group(n, &k);
         mpz_powm(*g, k, *n, *n2);
         mpz_powm(i, *g, *phi, *n2);
-        printf("looping here");
+        //printf("looping here");
     }while(mpz_cmp_ui(i, 1) != 0);
 
     mpz_clear(i);
@@ -179,7 +179,9 @@ void generate_nizkpk_setup(Setup_SGM* setup, Manager_S* m_secret, uint8_t q_EC[]
     
     if (byteCount == 20) {
         const char* q_EC = "0100000000000000000001f4c8f927aed3ca752257";
+        
         mpz_set_str(setup->q_EC, q_EC, 16);
+
     }
 
     else {
@@ -202,7 +204,7 @@ void generate_nizkpk_setup(Setup_SGM* setup, Manager_S* m_secret, uint8_t q_EC[]
     
     mpz_init(setup->n);
     generate_RSA_SSL(&p_n, &q_n, &setup->n, size);
-    printf("SSL DONE ");
+    
     mpz_inits(setup->n_goth, setup->h_goth, setup->g_goth, m_secret->phi_n_goth, NULL);
 
     mpz_t p_ng;
@@ -217,7 +219,7 @@ void generate_nizkpk_setup(Setup_SGM* setup, Manager_S* m_secret, uint8_t q_EC[]
     generate_RSA_SSL(&p_ng, &q_ng, &setup->n_goth, size);
     
     generate_r_from_group(&setup->n_goth, &setup->h_goth);
-    printf("GOTH DONE");
+    //printf("GOTH DONE");
     mpz_sub_ui(p_ng, p_ng, 1);
     mpz_sub_ui(q_ng, q_ng, 1);
     mpz_mul(m_secret->phi_n_goth, p_ng, q_ng);
@@ -251,7 +253,7 @@ void generate_nizkpk_setup(Setup_SGM* setup, Manager_S* m_secret, uint8_t q_EC[]
     mpz_init(setup->n_half);
     mpz_fdiv_q(setup->n_half, setup->n, two);
 
-    printf("generation next ");
+    //printf("generation next ");
     //G generation
     generate_g(&setup->n, &setup->n2, &m_secret->phi_n, &setup->g);
 
@@ -472,7 +474,102 @@ int verify_sig(Sig_star* sig, Manager_S* m_secret, Sender_S* s_secret, Setup_SGM
     }
 
 }
+void ZK_compute_Ts_Issuer(Manager_S* man_sec, Setup_SGM* setup, ZK_man *zk, ZK_man_private *zk_private) {
+    mpz_t phi_n2;
+    mpz_inits(zk->t1,zk->t2,zk_private->rho1, zk_private->rho2, zk_private->rho3,phi_n2,NULL);
+    mpz_mul(phi_n2, man_sec->phi_n, setup->n);
 
+    generate_r_from_group(&man_sec->phi_n_goth, &zk_private->rho1);
+    generate_r_from_group(&phi_n2, &zk_private->rho2);
+    generate_r_from_group(&man_sec->phi_n_goth, &zk_private->rho3);
+    //generate_r_from_bitlenght(512, &zk_private->rho1);
+    //generate_r_from_bitlenght(512, &zk_private->rho3);
+    //compute t1
+    mpz_t mid1,mid2;
+    mpz_inits(mid1,mid2,NULL);
+    mpz_powm(mid1, setup->h, zk_private->rho1, setup->n2);
+    mpz_powm(zk->t1, setup->g, zk_private->rho2, setup->n2);
+    mpz_mul(zk->t1, zk->t1, mid1);
+    mpz_mod(zk->t1, zk->t1, setup->n2);
+    mpz_clear(mid1);
+    //now t1 is computed
+
+    mpz_powm(mid2, setup->g_goth, zk_private->rho1, setup->n_goth);
+    mpz_powm(zk->t2, setup->h_goth, zk_private->rho3, setup->n_goth);
+    mpz_mul(zk->t2, zk->t2, mid2);
+    mpz_mod(zk->t2, zk->t2, setup->n_goth);
+    mpz_clears(mid2,phi_n2,NULL);
+}
+
+void generate_E_for_PK(Setup_SGM* setup, ZK_man *zk) {
+    mpz_init(zk->e);
+    //generate_r_from_group(&setup->n_goth, &zk->e);
+    generate_r_from_bitlenght(1024, &zk->e);
+}
+
+void ZK_compute_Zs_Issuer(Manager_S* m_secret, Setup_SGM* setup, ZK_man* zk, ZK_man_private* zk_private) {
+    mpz_inits(zk->z1, zk->z2, zk->z3, NULL);
+
+    mpz_mul(zk->z1, zk->e, m_secret->sk_m);
+    mpz_add(zk->z1, zk->z1, zk_private->rho1);
+    mpz_mod(zk->z1,zk->z1,setup->n_goth);
+
+    mpz_mul(zk->z2, zk->e, m_secret->r);
+    mpz_add(zk->z2, zk->z2, zk_private->rho2);
+    mpz_mod(zk->z2, zk->z2, setup->n2);
+
+    mpz_mul(zk->z3, zk->e, m_secret->r_dash);
+    mpz_add(zk->z3, zk->z3, zk_private->rho3);
+    //mpz_mod(zk->z3, zk->z3, setup->n_goth);
+}
+
+bool check_issuer_zk(Setup_SGM* setup, ZK_man* zk, E_1* e_1)
+{
+    mpz_t hz1, gz2, frac,left,right,hn2;
+    mpz_inits(hz1, gz2, frac, left,right,hn2,NULL);
+    mpz_powm(hz1, setup->h, zk->z1, setup->n2);
+    mpz_powm(gz2, setup->g, zk->z2, setup->n2);
+    mpz_mul(left, hz1, gz2);
+    mpz_mod(left, left, setup->n2);
+
+    mpz_powm(hn2, setup->h, setup->n_half, setup->n2);
+    mpz_invert(frac, hn2, setup->n2);
+    mpz_mul(frac, e_1->e1, frac);
+    mpz_mod(frac, frac, setup->n2);
+    mpz_powm(right, frac, zk->e, setup->n2);
+    mpz_mul(right, right, zk->t1);
+    mpz_mod(right, right, setup->n2);
+
+    if (mpz_cmp(left, right) != 0) 
+    {
+        mpz_clears(hz1, gz2, frac, left, right, hn2, NULL);
+        return false;
+    }
+    mpz_clears(hz1, gz2, frac, left, right, hn2, NULL);
+
+    mpz_t gz1, hz3, left2, right2;
+    mpz_inits(gz1, hz3, left2, right2, NULL);
+    mpz_powm(gz1, setup->g_goth, zk->z1,setup->n_goth);
+    mpz_powm(hz3, setup->h_goth, zk->z3, setup->n_goth);
+    mpz_mul(left2, gz1, hz3);
+    mpz_mod(left2, left2, setup->n_goth);
+
+    mpz_powm(right2, e_1->c_goth, zk->e, setup->n_goth);
+    mpz_mul(right2, right2, zk->t2);
+    mpz_mod(right2, right2, setup->n_goth);
+
+    if (mpz_cmp(left2, right2) == 0) 
+    {
+        mpz_clears(gz1, hz3, left2, right2, NULL);
+        return true;
+    }
+    else {
+        mpz_clears(gz1, hz3, left2, right2, NULL);
+        return false;
+    }
+
+    
+}
 int JSON_serialize_Setup_par(Setup_SGM* setup){
 
     FILE* fp;

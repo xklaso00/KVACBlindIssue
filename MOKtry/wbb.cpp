@@ -102,7 +102,7 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
         uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
         uint8_t client_Sec [20];
         uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-        gotBack=tutu(nBytes, man_Sec, client_Sec, 20);
+        gotBack=tutu(nBytes, man_Sec, client_Sec, 20,NULL);
 
     }
     else if(nowCurve == uECC_secp192r1()) {
@@ -113,7 +113,7 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
         uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
         uint8_t client_Sec[24];
         uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-        gotBack = tutu(nBytes, man_Sec, client_Sec, 24);
+        gotBack = tutu(nBytes, man_Sec, client_Sec, 24, NULL);
     }
     else if (nowCurve == uECC_secp224r1()) {
         
@@ -123,7 +123,7 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
         uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
         uint8_t client_Sec[28];
         uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-        gotBack = tutu(nBytes, man_Sec, client_Sec, 28);
+        gotBack = tutu(nBytes, man_Sec, client_Sec, 28, NULL);
     }
     else {
         uint8_t nBytes[32];
@@ -132,7 +132,7 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
         uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
         uint8_t client_Sec[32];
         uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-        gotBack = tutu(nBytes, man_Sec, client_Sec, 32);
+        gotBack = tutu(nBytes, man_Sec, client_Sec, 32, NULL);
     }
 
 
@@ -149,6 +149,24 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
     uECC_vli_set(sum, compareMe, parameters->nativeNCount);
 
 
+    uECC_vli_modInv(sum, sum, parameters->n, parameters->nativeNCount);
+    uECC_point_mult(targetSigma, parameters->g, sum, parameters->curve);
+}
+
+void SignGFirstHalf(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* parameters, uECC_word_t* sum) {
+    //uECC_word_t* sum = new uECC_word_t[parameters->nativeNCount]();
+
+    for (int i = 0; i < ISSUED; i++)
+    {
+        uECC_word_t* mul_x_m = new uECC_word_t[parameters->nativeNCount]();
+        uECC_vli_modMult(mul_x_m, m_list->get(i)->content, x_list->get(i + 1)->content, parameters->n, parameters->nativeNCount);
+        uECC_vli_modAdd(sum, sum, mul_x_m, parameters->n, parameters->nativeNCount);
+    }
+
+    uECC_vli_modAdd(sum, sum, x_list->get(0)->content, parameters->n, parameters->nativeNCount);
+}
+
+void SignGSecondHalf(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* parameters, uECC_word_t* targetSigma, uECC_word_t* sum) {
     uECC_vli_modInv(sum, sum, parameters->n, parameters->nativeNCount);
     uECC_point_mult(targetSigma, parameters->g, sum, parameters->curve);
 }
@@ -351,6 +369,7 @@ void declareModified(uECC_Parameters_t* parameters, uECC_word_t* nonce, uECC_wor
     if (ISSUED - REVEALED == 0)
     {
         uECC_vli_set(t, g_ro_r, parameters->nativeNCount * 2); //this might need work later
+        uECC_point_add(t, sig_to_rom_r, t, parameters->curve);
     }
     else
     {

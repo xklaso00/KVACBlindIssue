@@ -70,6 +70,10 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <TargetExt>
+    </TargetExt>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -104,13 +108,16 @@
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\sslRAK\include;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\gmp\include;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\sha256;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\micro-ecc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\kita2\AppData\Local\Programs\Python\Python310\Lib\site-packages\pybind11\include;C:\Users\kita2\AppData\Local\Programs\Python\Python310\include;C:\Users\kita2\Desktop\newMOK\boost\boost_1_81_0\stage\lib;C:\Users\kita2\Desktop\newMOK\boost\boost_1_81_0;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\sslRAK\include;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\gmp\include;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\sha256;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\micro-ecc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalOptions>/FORCE:MULTIPLE %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\gmplib\libgmp-13.lib;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\gmplib\libgmpxx-9.lib;C:\Users\kita2\Desktop\newMOK\openSSL_libs_compiled\SHARED\x64\Release\lib\libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\kita2\Desktop\newMOK\boost\boost_1_81_0\stage\lib;C:\Users\kita2\AppData\Local\Programs\Python\Python310\libs;C:\Users\kita2\AppData\Local\Programs\Python\Python310\include;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ModuleDefinitionFile>
+      </ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -140,6 +147,7 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\sha256;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <ClCompile Include="nizkpk_join.cpp" />
+    <ClCompile Include="pyBindings.cpp" />
     <ClCompile Include="uECC_List_t.cpp" />
     <ClCompile Include="uECC_Parameters_t.cpp" />
     <ClCompile Include="wbb.cpp" />
@@ -149,6 +157,7 @@
     <ClInclude Include="lib\micro-ecc\uECC.h" />
     <ClInclude Include="lib\micro-ecc\uECC_vli.h" />
     <ClInclude Include="lib\sha256\SHA256.h" />
+    <ClInclude Include="MOKtry.hpp" />
     <ClInclude Include="nizkpk_join.hpp" />
     <ClInclude Include="types.hpp" />
     <ClInclude Include="uECC_List_t.hpp" />
@@ -156,6 +165,7 @@
     <ClInclude Include="wbb.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="export.def" />
     <None Include="lib\gmplib\libgmp-13.dll" />
     <None Include="lib\gmplib\libgmpxx-9.dll" />
     <None Include="lib\micro-ecc\asm_arm.inc" />
