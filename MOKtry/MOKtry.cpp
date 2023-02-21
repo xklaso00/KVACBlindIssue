@@ -22,7 +22,7 @@
 //   4. K zobrazení chyb použijte okno Seznam chyb.
 //   5. Pokud chcete vytvořit nové soubory kódu, přejděte na Projekt > Přidat novou položku. Pokud chcete přidat do projektu existující soubory kódu, přejděte na Projekt > Přidat existující položku.
 //   6. Pokud budete chtít v budoucnu znovu otevřít tento projekt, přejděte na Soubor > Otevřít > Projekt a vyberte příslušný soubor .sln.
-uint8_t* tutu(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCount, uECC_word_t* randomReturn) {
+uint8_t* tutu(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCount, uECC_word_t* randomReturn, uECC_Curve curve) {
 
     // Values init
     //const char* q_EC = "0100000000000000000001f4c8f927aed3ca752257";
@@ -75,12 +75,13 @@ uint8_t* tutu(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCoun
     //ZK
     ZK_man zk;
     ZK_man_private zk_priv;
+    ZK_issuer_create(&m_secret, &setup, &zk, &zk_priv);
 
-    ZK_compute_Ts_Issuer(&m_secret,&setup, &zk, &zk_priv);
-    generate_E_for_PK(&setup, &zk);
-    ZK_compute_Zs_Issuer(&m_secret, &setup, &zk, &zk_priv);
+    //ZK_compute_Ts_Issuer(&m_secret,&setup, &zk, &zk_priv);
+    //generate_E_for_PK(&setup, &zk);
+    //ZK_compute_Zs_Issuer(&m_secret, &setup, &zk, &zk_priv);
     
-    if (check_issuer_zk(&setup, &zk, &e1))
+    if (check_issuer_proof_NI(&setup, &zk, &e1))
         printf("ZK checked sucesfully\n");
     else
     {
@@ -92,8 +93,9 @@ uint8_t* tutu(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCoun
     mpz_invert(inv, s_secret.r1, setup.q_EC);
     mpz_mul(sig.sig_star, sig.sig_star, inv);
     mpz_mod(sig.sig_star, sig.sig_star, setup.q_EC);*/
-
-
+    ZK_user zk2;
+    generate_ZK_user(&setup,  &zk2, &s_secret, &e1,&e2, curve);
+    check_PK_user(&setup, &zk2, &e2,&e1,curve);
     
 
     
@@ -380,7 +382,7 @@ void setup()
             uint8_t client_Sec[24];
             
             uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-            gotBack = tutu(nBytes, man_Sec, client_Sec, 20, randInTwoParty);
+            gotBack = tutu(nBytes, man_Sec, client_Sec, 20, randInTwoParty,curve);
             
           
 
@@ -393,7 +395,7 @@ void setup()
             uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
             uint8_t client_Sec[24];
             uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-            gotBack = tutu(nBytes, man_Sec, client_Sec, 24, randInTwoParty);
+            gotBack = tutu(nBytes, man_Sec, client_Sec, 24, randInTwoParty,curve);
         }
         else if (curve == uECC_secp224r1()) {
 
@@ -403,7 +405,7 @@ void setup()
             uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
             uint8_t client_Sec[28];
             uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-            gotBack = tutu(nBytes, man_Sec, client_Sec, 28, randInTwoParty);
+            gotBack = tutu(nBytes, man_Sec, client_Sec, 28, randInTwoParty,curve);
         }
         else {
             uint8_t nBytes[32];
@@ -412,7 +414,7 @@ void setup()
             uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
             uint8_t client_Sec[32];
             uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-            gotBack = tutu(nBytes, man_Sec, client_Sec, 32, randInTwoParty);
+            gotBack = tutu(nBytes, man_Sec, client_Sec, 32, randInTwoParty,curve);
             
         }
         uECC_vli_bytesToNative(sum, gotBack, byteCount);

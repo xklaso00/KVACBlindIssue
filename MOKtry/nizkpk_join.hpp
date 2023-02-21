@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
+#include <uECC_Parameters_t.hpp>
+#include <uECC_List_t.hpp>
+#include <uECC_vli.h>
 typedef struct
 {
     mpz_t q_EC;   
@@ -46,6 +49,20 @@ typedef struct
     mpz_t z3;
     mpz_t e;
 } ZK_man;
+
+typedef struct
+{
+    mpz_t zs;
+    mpz_t z1;
+    mpz_t z2;
+    mpz_t zu;
+    mpz_t z_goth;
+    mpz_t z_aph;
+    mpz_t e;
+    uECC_word_t *pk_i;
+    
+
+}ZK_user;
 
 typedef struct
 {
@@ -110,6 +127,16 @@ void ZK_compute_Zs_Issuer(Manager_S* m_secret, Setup_SGM* setup, ZK_man* zk, ZK_
 bool check_issuer_zk(Setup_SGM* setup, ZK_man* zk, E_1* e_1);
 
 void ZK_compute_Ts_Issuer(Manager_S* man_s, Setup_SGM* setup, ZK_man* zk, ZK_man_private* zk_private);
+
+void ZK_issuer_create(Manager_S* man_sec, Setup_SGM* setup, ZK_man* zk, ZK_man_private* zk_private);
+
+bool check_issuer_proof_NI(Setup_SGM* setup, ZK_man* zk, E_1* e_1);
+
+void hashE(mpz_t* e, mpz_t c1, mpz_t c2, mpz_t c3, uECC_word_t* c4, const wordcount_t byteCount);
+
+void generate_ZK_user(Setup_SGM* setup, ZK_user* zk, Sender_S* user_sk, E_1* e1, E_2* e2, uECC_Curve curve);
+
+bool check_PK_user(Setup_SGM* setup, ZK_user* zk, E_2* e2, E_1* e1, uECC_Curve curve);
 
 int JSON_serialize_Setup_par(Setup_SGM* setup);
 

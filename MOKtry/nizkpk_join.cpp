@@ -7,7 +7,7 @@
 #include <openssl/rand.h>
 #include <openssl/types.h>
 #include <openssl/crypto.h>
-
+#include <SHA256.h>
 #include <time.h>
 #define kappa 3
 
@@ -345,7 +345,7 @@ E_2 generate_e2(Setup_SGM* setup, Sender_S* s_secret, E_1* e1, uint8_t client_se
 
     mpz_inits(e2.c2_goth, NULL);
     mpz_powm(e2.c2_goth, setup->g_goth, s_secret->sk_i, setup->n_goth);
-    mpz_powm(e22, setup->h_goth, s_secret->sk_i, setup->n_goth);
+    mpz_powm(e22, setup->h_goth, s_secret->r_bar, setup->n_goth);
     mpz_mul(e2.c2_goth, e2.c2_goth, e22);
     mpz_mod(e2.c2_goth, e2.c2_goth, setup->n_goth);
 
@@ -400,7 +400,7 @@ E_2 generate_e2_parallel(Setup_SGM* setup, Sender_S* s_secret, E_1* e1){
 
     mpz_inits(e2.c2_goth, NULL);
     mpz_powm(e2.c2_goth, setup->g_goth, s_secret->sk_i, setup->n_goth);
-    mpz_powm(e22, setup->h_goth, s_secret->sk_i, setup->n_goth);
+    mpz_powm(e22, setup->h_goth, s_secret->r_bar, setup->n_goth);//I modified r_bar instead of sk_i
     mpz_mul(e2.c2_goth, e2.c2_goth, e22);
     mpz_mod(e2.c2_goth, e2.c2_goth, setup->n_goth);
 
@@ -523,6 +523,84 @@ void ZK_compute_Zs_Issuer(Manager_S* m_secret, Setup_SGM* setup, ZK_man* zk, ZK_
     //mpz_mod(zk->z3, zk->z3, setup->n_goth);
 }
 
+void ZK_issuer_create(Manager_S* man_sec, Setup_SGM* setup, ZK_man* zk, ZK_man_private* zk_private) {
+    mpz_t phi_n2;
+    mpz_inits(zk->t1, zk->t2, zk_private->rho1, zk_private->rho2, zk_private->rho3, phi_n2, NULL);
+    mpz_mul(phi_n2, man_sec->phi_n, setup->n);
+
+    generate_r_from_group(&setup->n_goth, &zk_private->rho1);
+    generate_r_from_group(&setup->n2, &zk_private->rho2);
+    generate_r_from_group(&setup->n_goth, &zk_private->rho3);
+    //generate_r_from_bitlenght(512, &zk_private->rho1);
+    //generate_r_from_bitlenght(512, &zk_private->rho3);
+    //compute t1
+    mpz_t mid1, mid2;
+    mpz_inits(mid1, mid2, NULL);
+    mpz_powm(mid1, setup->h, zk_private->rho1, setup->n2);
+    mpz_powm(zk->t1, setup->g, zk_private->rho2, setup->n2);
+    mpz_mul(zk->t1, zk->t1, mid1);
+    mpz_mod(zk->t1, zk->t1, setup->n2);
+    mpz_clear(mid1);
+    //now t1 is computed
+
+    mpz_powm(mid2, setup->g_goth, zk_private->rho1, setup->n_goth);
+    mpz_powm(zk->t2, setup->h_goth, zk_private->rho3, setup->n_goth);
+    mpz_mul(zk->t2, zk->t2, mid2);
+    mpz_mod(zk->t2, zk->t2, setup->n_goth);
+    mpz_clears(mid2, phi_n2, NULL);
+
+    mpz_init(zk->e);
+    //now we hash to get e
+    
+    SHA256 eHash;
+    uint8_t* placeholder = new uint8_t[32]();
+
+    //we convert to uint8_t for hash
+    size_t sz = mpz_sizeinbase(zk->t1, 2);
+    size_t szt2 = mpz_sizeinbase(zk->t2, 2);
+    //printf("size is %d \n", sz);
+
+    int t1Count = (sz + 7) / 8;
+    int t2Count = (szt2 + 7) / 8;
+    uint8_t* t1_uint8 = (uint8_t*)malloc(t1Count);
+    mpz_export(t1_uint8, NULL, 1, sizeof(t1_uint8[0]), 0, 0, zk->t1);
+    
+    uint8_t* t2_uint8 = (uint8_t*)malloc(t2Count);
+    mpz_export(t2_uint8, NULL, 1, sizeof(t2_uint8[0]), 0, 0, zk->t2);
+
+    for (int i = 0; i < t1Count / 2; i++)
+        eHash.update(t1_uint8 + i * 2, 2);
+
+    for (int i = 0; i < t2Count / 2; i++)
+        eHash.update(t2_uint8 + i * 2, 2);
+
+    placeholder = eHash.digest();
+    free(t1_uint8);
+    free(t2_uint8);
+    mpz_import(zk->e, 32,1, sizeof(placeholder[0]), 0, 0, placeholder);
+
+    //here we have how to import back
+    /*mpz_t t12;
+    mpz_init(t12);
+    mpz_import(t12, (sz + 7) / 8, 1, sizeof(t1_uint8[0]), 0, 0, t1_uint8);
+    if (mpz_cmp(zk->t1, t12) == 0)
+        printf("fffffffffffffffff");*/
+    
+    mpz_inits(zk->z1, zk->z2, zk->z3, NULL);
+
+    mpz_mul(zk->z1, zk->e, man_sec->sk_m);
+    mpz_add(zk->z1, zk->z1, zk_private->rho1);
+    mpz_mod(zk->z1, zk->z1, setup->n_goth);
+
+    mpz_mul(zk->z2, zk->e, man_sec->r);
+    mpz_add(zk->z2, zk->z2, zk_private->rho2);
+    mpz_mod(zk->z2, zk->z2, setup->n2);
+
+    mpz_mul(zk->z3, zk->e, man_sec->r_dash);
+    mpz_add(zk->z3, zk->z3, zk_private->rho3);
+    
+}
+
 bool check_issuer_zk(Setup_SGM* setup, ZK_man* zk, E_1* e_1)
 {
     mpz_t hz1, gz2, frac,left,right,hn2;
@@ -545,7 +623,7 @@ bool check_issuer_zk(Setup_SGM* setup, ZK_man* zk, E_1* e_1)
         mpz_clears(hz1, gz2, frac, left, right, hn2, NULL);
         return false;
     }
-    mpz_clears(hz1, gz2, frac, left, right, hn2, NULL);
+    
 
     mpz_t gz1, hz3, left2, right2;
     mpz_inits(gz1, hz3, left2, right2, NULL);
@@ -560,16 +638,387 @@ bool check_issuer_zk(Setup_SGM* setup, ZK_man* zk, E_1* e_1)
 
     if (mpz_cmp(left2, right2) == 0) 
     {
+        
+
         mpz_clears(gz1, hz3, left2, right2, NULL);
+        mpz_clears(hz1, gz2, frac, left, right, hn2, NULL);
         return true;
     }
     else {
         mpz_clears(gz1, hz3, left2, right2, NULL);
+        mpz_clears(hz1, gz2, frac, left, right, hn2, NULL);
         return false;
     }
 
     
 }
+
+bool check_issuer_proof_NI(Setup_SGM* setup, ZK_man* zk, E_1* e_1) {
+    mpz_t hz1, gz2, frac, c1, hn2, einv;
+    mpz_inits(hz1, gz2, frac, c1, hn2, einv, NULL);
+    mpz_powm(hz1, setup->h, zk->z1, setup->n2);
+    mpz_powm(gz2, setup->g, zk->z2, setup->n2);
+    mpz_mul(c1, hz1, gz2);
+    mpz_mod(c1, c1, setup->n2);
+
+    mpz_powm(hn2, setup->h, setup->n_half, setup->n2);
+    mpz_invert(frac, hn2, setup->n2);
+    mpz_mul(frac, e_1->e1, frac);
+    mpz_mod(frac, frac, setup->n2);
+
+    //mpz_sub(einv, setup->n2, zk->e);
+    //mpz_powm(frac, frac, einv, setup->n2);
+    mpz_powm(frac, frac, zk->e, setup->n2);
+    mpz_invert(frac, frac, setup->n2);
+    mpz_mul(c1, c1, frac);
+    mpz_mod(c1, c1, setup->n2);
+
+
+    //now I have c1'
+
+    mpz_t gz1, hz3, c2, ce, einv2;
+    mpz_inits(gz1, hz3, c2, ce, einv2, NULL);
+    mpz_powm(gz1, setup->g_goth, zk->z1, setup->n_goth);
+    mpz_powm(hz3, setup->h_goth, zk->z3, setup->n_goth);
+    mpz_mul(c2, gz1, hz3);
+    mpz_mod(c2, c2, setup->n_goth);
+
+    //mpz_sub(einv2, setup->n_goth, zk->e);
+    //mpz_powm(ce, e_1->c_goth, einv2, setup->n_goth);
+    mpz_powm(ce, e_1->c_goth, zk->e, setup->n_goth);
+    mpz_invert(ce, ce, setup->n_goth);
+
+    mpz_mul(c2, c2, ce);
+    mpz_mod(c2, c2, setup->n_goth);
+
+    //now we hash
+    SHA256 eHash;
+    uint8_t* placeholder = new uint8_t[32]();
+
+    //we convert to uint8_t for hash
+    size_t sz = mpz_sizeinbase(c1, 2);
+    size_t szt2 = mpz_sizeinbase(c2, 2);
+
+    int t1Count = (sz + 7) / 8;
+    int t2Count = (szt2 + 7) / 8;
+    uint8_t* t1_uint8 = (uint8_t*)malloc(t1Count);
+    mpz_export(t1_uint8, NULL, 1, sizeof(t1_uint8[0]), 0, 0, c1);
+
+    uint8_t* t2_uint8 = (uint8_t*)malloc(t2Count);
+    mpz_export(t2_uint8, NULL, 1, sizeof(t2_uint8[0]), 0, 0, c2);
+
+    for (int i = 0; i < t1Count / 2; i++)
+        eHash.update(t1_uint8 + i * 2, 2);
+
+    for (int i = 0; i < t2Count / 2; i++)
+        eHash.update(t2_uint8 + i * 2, 2);
+
+    placeholder = eHash.digest();
+    free(t1_uint8);
+    free(t2_uint8);
+
+    mpz_t compareHash;
+    mpz_init(compareHash);
+    mpz_import(compareHash, 32, 1, sizeof(placeholder[0]), 0, 0, placeholder);
+    if (mpz_cmp(compareHash, zk->e) == 0)
+    {
+        mpz_clears(hz1, gz2, frac, c1, hn2, einv, gz1, hz3, c2, ce, einv2, NULL);
+        return true;
+    }
+    else
+    {
+        mpz_clears(hz1, gz2, frac, c1, hn2, einv, gz1, hz3, c2, ce, einv2, NULL);
+        return false;
+    }
+       
+
+}
+
+void generate_ZK_user(Setup_SGM* setup, ZK_user* zk, Sender_S * user_sk, E_1* e1, E_2* e2, uECC_Curve curve) {
+
+    mpz_t rhoS, rho1, rho2, rhoAph, rhoU, rhoGoth;
+    mpz_inits(rhoS, rho1, rho2, rhoAph, rhoU, rhoGoth, NULL);
+    //random rho generation
+    generate_r_from_group(&setup->q_EC, &rhoS);
+    generate_r_from_group(&setup->n_goth, &rhoGoth);
+    generate_r_from_group(&setup->n_goth, &rhoAph);
+    generate_r_from_group(&setup->n_goth, &rho1);
+    generate_r_from_group(&setup->n2, &rho2);
+    generate_r_from_group(&setup->n_goth, &rhoU);
+    //lets compute pk_i for now
+
+    
+    const uECC_word_t* nCurve = uECC_curve_n(curve);
+    const uECC_word_t* gCurve = uECC_curve_G(curve);
+    const wordcount_t nativeCount = uECC_curve_num_words(curve);
+    const wordcount_t nativeNCount = uECC_curve_num_n_words(curve);
+    const wordcount_t byteCount = uECC_curve_num_bytes(curve);
+    //calculation of pk_i
+    zk->pk_i = new uECC_word_t[nativeNCount * 2]();
+    uint8_t* sk_i_uint8 = (uint8_t*)malloc(byteCount * sizeof(uint8_t));
+    mpz_export(sk_i_uint8, NULL, 1, sizeof(sk_i_uint8[0]), 0, 0, user_sk->sk_i);
+    uECC_word_t* sk_i_native = new uECC_word_t[nativeNCount]();
+    uECC_vli_bytesToNative(sk_i_native, sk_i_uint8, byteCount); //we convert ski to uecc
+    uECC_point_mult(zk->pk_i, gCurve, sk_i_native, curve); //calculate pki
+
+    mpz_t alpha, beta;
+    mpz_inits(alpha, beta, NULL);
+    mpz_powm(alpha, setup->h, setup->n_half,setup->n2);
+    mpz_invert(alpha, alpha, setup->n2);//now we have h^n/2 in alpha
+    mpz_mul(alpha, e1->e1, alpha);
+    mpz_mod(alpha, alpha, setup->n2); //now we computed alpha
+    mpz_powm(beta, setup->h, setup->q_EC,setup->n2);
+
+    mpz_t c1, c2, c3,help;
+    mpz_inits(c1, c2, c3,help, NULL);
+
+    //computation of c1 in n^2
+    mpz_powm(c1, alpha, rho1, setup->n2);
+    mpz_powm(help, setup->h, rhoAph, setup->n2);
+    mpz_mul(c1, c1, help);
+    mpz_powm(help, beta, rho2, setup->n2);
+    mpz_mul(c1, c1, help);
+    mpz_powm(help, setup->g, rhoGoth, setup->n2);
+    mpz_mul(c1, c1, help);
+    mpz_mod(c1, c1, setup->n2);
+    //computation of c2 in nGoth
+    mpz_powm(c2, setup->g_goth, rhoS, setup->n_goth);
+    mpz_powm(help, setup->h_goth, rhoGoth, setup->n_goth);
+    mpz_mul(c2, c2, help);
+    mpz_mod(c2, c2, setup->n_goth);
+    //computation of c3 in goth
+    mpz_powm(c3, e2->c2_goth, rho1, setup->n_goth);
+    mpz_invert(help, setup->g_goth, setup->n_goth);
+    mpz_powm(help, help, rhoAph, setup->n_goth);
+    mpz_mul(c3, c3, help);
+    mpz_powm(help, setup->h_goth, rhoU, setup->n_goth);
+
+    //mpz_invert(help, help, setup->n_goth);//made this up
+
+    mpz_mul(c3, c3, help);
+    mpz_mod(c3, c3, setup->n_goth);
+    //compute c4 on curve
+    uECC_word_t *e4_point = new uECC_word_t[nativeNCount * 2]();
+    uint8_t* rhoS_uint8 = (uint8_t*)malloc(byteCount * sizeof(uint8_t));
+    mpz_export(rhoS_uint8, NULL, 1, sizeof(rhoS_uint8[0]), 0, 0, rhoS);
+    uECC_word_t* rhoS_native = new uECC_word_t[nativeNCount]();//converting of rhoS to mciroECC
+    uECC_vli_bytesToNative(rhoS_native, rhoS_uint8, byteCount);
+    uECC_point_mult(e4_point, gCurve, rhoS_native, curve);
+    //uint8_t* c4_uint8 = (uint8_t*)malloc(byteCount *2* sizeof(uint8_t));
+    //uECC_vli_nativeToBytes(c4_uint8, byteCount * 2, e4_point); //c4 to uint we can hash that
+    //zk->e4_point = e4_point;
+
+    //these were just for check
+    /*mpz_inits(zk->c1, zk->c2, zk->c3, NULL);
+    mpz_set(zk->c1, c1);
+    mpz_set(zk->c2, c2);
+    mpz_set(zk->c3, c3);*/
+    
+    hashE(&zk->e, c1, c2, c3, e4_point, byteCount);
+
+    mpz_t u;
+    mpz_init(u);
+    
+    //mpz_sub(u, setup->n_goth, user_sk->r_bar); //I am not sure about this
+    //this is kinda weird? as -r_bar as n-r_bar does not work? and it should imo, but the neg does work
+    mpz_neg(u, user_sk->r_bar);
+    mpz_mul(u, u, user_sk->r1);
+    
+
+    mpz_inits(zk->z1, zk->z2, zk->zs, zk->zu, zk->z_goth,zk->z_aph, NULL);
+    mpz_mul(zk->zs, zk->e, user_sk->sk_i);
+    mpz_add(zk->zs, zk->zs, rhoS);
+    mpz_mul(zk->z1, zk->e, user_sk->r1);
+    mpz_add(zk->z1, zk->z1, rho1);
+    mpz_mul(zk->z2, zk->e, user_sk->r2);
+    mpz_add(zk->z2, zk->z2, rho2);
+    mpz_mul(zk->zu, zk->e, u);
+    //ree
+
+
+
+    mpz_add(zk->zu, zk->zu, rhoU); //modified here?
+    mpz_mul(zk->z_goth, zk->e, user_sk->r_bar);
+    mpz_add(zk->z_goth, zk->z_goth, rhoGoth);
+    mpz_t sk_i_aph;
+    mpz_init(sk_i_aph);
+    mpz_mul(sk_i_aph, user_sk->sk_i, user_sk->r1);
+
+    mpz_mul(zk->z_aph, zk->e, sk_i_aph);
+    mpz_add(zk->z_aph, zk->z_aph, rhoAph);
+
+    //this was just a check of the =1 eq to find out what was wrong
+    /*mpz_t test_one, one, helpone;
+    mpz_inits(test_one, one, helpone, NULL);
+    mpz_set_ui(one, 1);
+    mpz_powm(test_one, e2->c2_goth, user_sk->r1, setup->n_goth);
+    mpz_invert(helpone, setup->g_goth, setup->n_goth);
+    mpz_powm(helpone, helpone, sk_i_aph, setup->n_goth);
+    mpz_mul(test_one, test_one, helpone);
+    
+    mpz_powm(helpone, setup->h_goth, u, setup->n_goth);
+   
+    //mpz_invert(helpone, helpone, setup->n_goth);
+
+    mpz_mul(test_one, test_one, helpone);
+    mpz_mod(test_one, test_one, setup->n_goth);
+    if (mpz_cmp(test_one, one) == 0)
+        printf("at least this shit works \n");*/
+    
+    
+
+    mpz_clears(c1, c2, c3, help, alpha, beta, sk_i_aph, u,NULL);
+
+}
+
+bool check_PK_user(Setup_SGM* setup, ZK_user *zk, E_2* e2, E_1 * e1, uECC_Curve curve) {
+    mpz_t alpha, beta;
+    mpz_inits(alpha, beta, NULL);
+    mpz_powm(alpha, setup->h, setup->n_half, setup->n2);
+    mpz_invert(alpha, alpha, setup->n2);//now we have h^n/2 in alpha
+    mpz_mul(alpha, e1->e1, alpha);
+    mpz_mod(alpha, alpha, setup->n2); //now we computed alpha
+    mpz_powm(beta, setup->h, setup->q_EC, setup->n2);
+
+    mpz_t c1, c2, c3, help;
+    mpz_inits(c1, c2, c3,help, NULL);
+
+    mpz_powm(c1, alpha, zk->z1, setup->n2);
+    mpz_powm(help, setup->h, zk->z_aph, setup->n2);
+    mpz_mul(c1, c1, help);
+    mpz_powm(help, beta, zk->z2, setup->n2);
+    mpz_mul(c1, c1, help);
+    mpz_powm(help, setup->g, zk->z_goth, setup->n2);
+    mpz_mul(c1, c1, help);
+    mpz_powm(help, setup->h, setup->n_half, setup->n2);
+    mpz_invert(help, help, setup->n2);
+    mpz_mul(help, e2->e2, help);
+    mpz_mod(help, help, setup->n2);
+    mpz_powm(help, help, zk->e, setup->n2);
+    mpz_invert(help, help, setup->n2);
+    mpz_mul(c1, c1, help);
+    mpz_mod(c1, c1, setup->n2);
+    //if (mpz_cmp(c1, zk->c1) == 0)// we will remove this check later
+        //printf("c1 works! \n");
+
+    mpz_powm(c2, setup->g_goth, zk->zs, setup->n_goth);
+    mpz_powm(help, setup->h_goth, zk->z_goth, setup->n_goth);
+    mpz_mul(c2, c2, help);
+    mpz_powm(help, e2->c2_goth, zk->e, setup->n_goth);
+    mpz_invert(help, help, setup->n_goth);
+    mpz_mul(c2, c2, help);
+    mpz_mod(c2, c2, setup->n_goth);
+    //if (mpz_cmp(c2, zk->c2) == 0)// we will remove this check later
+        //printf("c2 works! \n");
+
+    mpz_powm(c3, e2->c2_goth, zk->z1, setup->n_goth);
+    mpz_invert(help, setup->g_goth, setup->n_goth);
+    mpz_powm(help, help, zk->z_aph, setup->n_goth);//is this right?
+    mpz_mul(c3,c3,help);
+
+    mpz_powm(help, setup->h_goth, zk->zu, setup->n_goth);
+    //mpz_invert(help,help,setup->n_goth);//i made this shit up
+
+    mpz_mul(c3,c3,help);
+    mpz_mod(c3, c3, setup->n_goth);
+    //if (mpz_cmp(c3, zk->c3) == 0)// we will remove this check later
+        //printf("c3 works! \n");
+    
+    const uECC_word_t* nCurve = uECC_curve_n(curve);
+    const uECC_word_t* gCurve = uECC_curve_G(curve);
+    const wordcount_t nativeCount = uECC_curve_num_words(curve);
+    const wordcount_t nativeNCount = uECC_curve_num_n_words(curve);
+    const wordcount_t byteCount = uECC_curve_num_bytes(curve);
+
+    uECC_word_t* c4_point = new uECC_word_t[nativeNCount * 2]();
+    uECC_word_t* help_point = new uECC_word_t[nativeNCount * 2]();
+
+    uECC_word_t* zs_uecc = new uECC_word_t[nativeNCount]();
+
+    
+    mpz_mod(zk->zs, zk->zs, setup->q_EC); //not sure
+    uint8_t* zs_bytes = (uint8_t*)malloc(byteCount * sizeof(uint8_t));
+    mpz_export(zs_bytes, NULL, 1, sizeof(zs_bytes[0]), 0, 0, zk->zs);
+    uECC_vli_bytesToNative(zs_uecc, zs_bytes, byteCount);
+
+    
+    mpz_t eModed;
+    mpz_init(eModed);
+    mpz_mod(eModed, zk->e, setup->q_EC);
+    //mpz_neg(eModed, eModed);
+    //mpz_mod(eModed, zk->e, setup->q_EC);
+    mpz_sub(eModed, setup->q_EC, eModed);
+    
+    uECC_word_t* e_in_ecc = new uECC_word_t[nativeNCount]();
+    uint8_t* e_bytes = (uint8_t*)malloc(byteCount * sizeof(uint8_t));
+    mpz_export(e_bytes, NULL, 1, sizeof(e_bytes[0]), 0, 0, eModed);
+    uECC_vli_bytesToNative(e_in_ecc, e_bytes, byteCount);
+   
+    uECC_point_mult(c4_point, gCurve, zs_uecc, curve);
+    uECC_point_mult(help_point, zk->pk_i, e_in_ecc, curve);
+    //uECC_point_add(zk->e4_point, help_point, zk->e4_point, curve); //modded
+    uECC_point_add(c4_point, help_point, c4_point, curve);
+    //if (uECC_vli_cmp(c4_point, zk->e4_point, nativeCount) == 0)
+        //printf("eeeeeeeeee4\n");
+
+    free(zs_bytes);
+    free(e_bytes);
+
+    mpz_t eCheck;
+    mpz_init(eCheck);
+    hashE(&eCheck, c1, c2, c3, c4_point, byteCount);
+    if (mpz_cmp(eCheck, zk->e) == 0) {
+        printf("the user proof is valid \n");
+        mpz_clears(alpha, beta, c1, c2, c3, help, eModed, eCheck,NULL);
+        return true;
+    }
+    else {
+        printf("the user proof was not checked sucesfuly\n");
+        mpz_clears(alpha, beta, c1, c2, c3, help, eModed, eCheck, NULL);
+        return false;
+    }
+
+    
+}
+
+void hashE(mpz_t* e, mpz_t c1, mpz_t c2, mpz_t c3, uECC_word_t* c4, const wordcount_t byteCount) {
+    SHA256 eHash;
+    uint8_t* placeholder = new uint8_t[32]();
+
+    uint8_t* c4_uint8 = (uint8_t*)malloc(byteCount * 2 * sizeof(uint8_t));
+    uECC_vli_nativeToBytes(c4_uint8, byteCount * 2, c4); //c4 to uint we can hash that
+
+    size_t sz_c1 = mpz_sizeinbase(c1, 2);
+    size_t sz_c2 = mpz_sizeinbase(c2, 2);
+    size_t sz_c3 = mpz_sizeinbase(c3, 2);
+    int c1Count = (sz_c1 + 7) / 8;
+    int c2Count = (sz_c2 + 7) / 8;
+    int c3Count = (sz_c3 + 7) / 8;
+    uint8_t* c1_uint8 = (uint8_t*)malloc(c1Count * sizeof(uint8_t));
+    mpz_export(c1_uint8, NULL, 1, sizeof(c1_uint8[0]), 0, 0, c1);
+    uint8_t* c2_uint8 = (uint8_t*)malloc(c2Count * sizeof(uint8_t));
+    mpz_export(c2_uint8, NULL, 1, sizeof(c2_uint8[0]), 0, 0, c2);
+    uint8_t* c3_uint8 = (uint8_t*)malloc(c3Count * sizeof(uint8_t));
+    mpz_export(c3_uint8, NULL, 1, sizeof(c3_uint8[0]), 0, 0, c3);
+    for (int i = 0; i < c1Count / 2; i++)
+        eHash.update(c1_uint8 + i * 2, 2);
+    for (int i = 0; i < c2Count / 2; i++)
+        eHash.update(c2_uint8 + i * 2, 2);
+    for (int i = 0; i < c3Count / 2; i++)
+        eHash.update(c3_uint8 + i * 2, 2);
+    for (int i = 0; i < (byteCount * 2) / 2; i++)
+        eHash.update(c4_uint8 + i * 2, 2);
+
+    placeholder = eHash.digest();
+    free(c1_uint8);
+    free(c2_uint8);
+    free(c3_uint8);
+    free(c4_uint8);
+
+    mpz_init(*e);
+    mpz_import(*e, 32, 1, sizeof(placeholder[0]), 0, 0, placeholder);
+}
+
 int JSON_serialize_Setup_par(Setup_SGM* setup){
 
     FILE* fp;

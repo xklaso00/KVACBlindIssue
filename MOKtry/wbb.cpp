@@ -102,7 +102,7 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
         uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
         uint8_t client_Sec [20];
         uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-        gotBack=tutu(nBytes, man_Sec, client_Sec, 20,NULL);
+        gotBack=tutu(nBytes, man_Sec, client_Sec, 20,NULL, nowCurve);
 
     }
     else if(nowCurve == uECC_secp192r1()) {
@@ -113,7 +113,7 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
         uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
         uint8_t client_Sec[24];
         uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-        gotBack = tutu(nBytes, man_Sec, client_Sec, 24, NULL);
+        gotBack = tutu(nBytes, man_Sec, client_Sec, 24, NULL, nowCurve);
     }
     else if (nowCurve == uECC_secp224r1()) {
         
@@ -123,7 +123,7 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
         uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
         uint8_t client_Sec[28];
         uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-        gotBack = tutu(nBytes, man_Sec, client_Sec, 28, NULL);
+        gotBack = tutu(nBytes, man_Sec, client_Sec, 28, NULL, nowCurve);
     }
     else {
         uint8_t nBytes[32];
@@ -132,7 +132,7 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
         uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
         uint8_t client_Sec[32];
         uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-        gotBack = tutu(nBytes, man_Sec, client_Sec, 32, NULL);
+        gotBack = tutu(nBytes, man_Sec, client_Sec, 32, NULL, nowCurve);
     }
 
 
