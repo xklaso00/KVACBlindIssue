@@ -125,22 +125,21 @@
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\micro-ecc;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\sha256;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\gmp\include;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\sslRAK\include;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry;C:\Users\kita2\Desktop\newMOK\boost\boost_1_81_0;C:\Users\kita2\Desktop\newMOK\boost\boost_1_81_0\stage\lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Users\kita2\Desktop\newMOK\boost\boost_1_81_0\stage\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\gmplib\libgmp-13.lib;C:\Users\kita2\Desktop\newMOK\MOKtry\MOKtry\lib\gmplib\libgmpxx-9.lib;C:\Users\kita2\Desktop\newMOK\openSSL_libs_compiled\SHARED\x64\Release\lib\libssl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="lib\micro-ecc\test\test_compress.c" />
-    <ClCompile Include="lib\micro-ecc\test\test_compute.c" />
-    <ClCompile Include="lib\micro-ecc\test\test_ecdh.c" />
-    <ClCompile Include="lib\micro-ecc\test\test_ecdsa.c" />
     <ClCompile Include="lib\micro-ecc\uECC.c" />
     <ClCompile Include="lib\sha256\SHA256.cpp" />
     <ClCompile Include="MOKtry.cpp">

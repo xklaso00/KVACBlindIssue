@@ -38,36 +38,37 @@ uint8_t* tutu(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCoun
     Setup_SGM setup;
     Manager_S m_secret;
 
-
+    clock_t startsetup = clock() / (CLOCKS_PER_SEC / 1000);
     generate_nizkpk_setup(&setup, &m_secret, n, man_sec, byteCount);
-
-    JSON_serialize_Setup_par(&setup);
-    Setup_SGM setup2;
-    JSON_deserialize_Setup_par(&setup2);
+    clock_t endsetup = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("setup took %d ms \n", (endsetup - startsetup));
+    //JSON_serialize_Setup_par(&setup);
+    //Setup_SGM setup2;
+    //JSON_deserialize_Setup_par(&setup2);
 
 
     E_1 e1 = generate_e1(&setup, &m_secret);
 
-    JSON_serialize_e1(&e1);
-    E_1 e11;
-    JSON_deserialize_e1(&e11);
+    //JSON_serialize_e1(&e1);
+    //E_1 e11;
+    //JSON_deserialize_e1(&e11);
 
 
     Sender_S s_secret;
-    E_2 e2 = generate_e2(&setup2, &s_secret, &e11, client_key, byteCount);
+    E_2 e2 = generate_e2(&setup, &s_secret, &e1, client_key, byteCount);
 
-    JSON_serialize_e2(&e2);
-    E_2 e22;
-    JSON_deserialize_e2(&e22);
+    //JSON_serialize_e2(&e2);
+    //E_2 e22;
+    //JSON_deserialize_e2(&e22);
 
 
-    Sig_star sig = decrypt_e2(&setup2, &m_secret, &e22);
+    Sig_star sig = decrypt_e2(&setup, &m_secret, &e2);
 
-    JSON_serialize_sig_star(&sig);
-    Sig_star sig2;
-    JSON_deserialize_sig_star(&sig2);
+    //JSON_serialize_sig_star(&sig);
+    //Sig_star sig2;
+    //JSON_deserialize_sig_star(&sig2);
 
-    int verify = verify_sig(&sig2, &m_secret, &s_secret, &setup2);
+    int verify = verify_sig(&sig, &m_secret, &s_secret, &setup);
     if (verify == 1) {
         printf("ERROR: Test NOT conducted successfully\n");
     }
@@ -167,7 +168,7 @@ void setup()
     curves[num_curves++] = uECC_secp160r1();
     
 #endif
-/*#if uECC_SUPPORTS_secp192r1
+#if uECC_SUPPORTS_secp192r1
     curves[num_curves++] = uECC_secp192r1();
     
 #endif
@@ -179,7 +180,7 @@ void setup()
 #endif
 #if uECC_SUPPORTS_secp256k1
     curves[num_curves++] = uECC_secp256k1();
-#endif*/
+#endif
 
     for (c = 0; c < num_curves; ++c)
     {

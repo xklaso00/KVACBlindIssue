@@ -255,8 +255,10 @@ void generate_nizkpk_setup(Setup_SGM* setup, Manager_S* m_secret, uint8_t q_EC[]
 
     //printf("generation next ");
     //G generation
+    clock_t startGen = clock() / (CLOCKS_PER_SEC / 1000);
     generate_g(&setup->n, &setup->n2, &m_secret->phi_n, &setup->g);
-
+    clock_t endGen = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("g gen took %d ms \n",(endGen - startGen));
     printf("size of n: %zu\n", mpz_sizeinbase(setup->n, 2));
     printf("size of g: %zu\n", mpz_sizeinbase(setup->g, 2));
     printf("size of h: %zu\n", mpz_sizeinbase(setup->h, 2));

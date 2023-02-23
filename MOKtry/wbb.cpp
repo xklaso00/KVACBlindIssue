@@ -1,7 +1,7 @@
 #include <wbb.hpp>
 #include <stdio.h>
 #include <vcruntime_string.h>
-#include<MOKtry.cpp>
+#include<MOKtry.hpp>
 static void printArray(const uECC_word_t *content, wordcount_t byteCount, bool newLine)
 {
     uint8_t *output = new uint8_t[byteCount]();

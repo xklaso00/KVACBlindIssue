@@ -18,18 +18,6 @@
     <ClCompile Include="MOKtry.cpp">
       <Filter>Zdrojové soubory</Filter>
     </ClCompile>
-    <ClCompile Include="lib\micro-ecc\test\test_compress.c">
-      <Filter>Zdrojové soubory</Filter>
-    </ClCompile>
-    <ClCompile Include="lib\micro-ecc\test\test_compute.c">
-      <Filter>Zdrojové soubory</Filter>
-    </ClCompile>
-    <ClCompile Include="lib\micro-ecc\test\test_ecdh.c">
-      <Filter>Zdrojové soubory</Filter>
-    </ClCompile>
-    <ClCompile Include="lib\micro-ecc\test\test_ecdsa.c">
-      <Filter>Zdrojové soubory</Filter>
-    </ClCompile>
     <ClCompile Include="lib\micro-ecc\uECC.c">
       <Filter>Zdrojové soubory</Filter>
     </ClCompile>
