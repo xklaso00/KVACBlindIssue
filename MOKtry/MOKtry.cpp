@@ -38,68 +38,105 @@ uint8_t* tutu(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCoun
     Setup_SGM setup;
     Manager_S m_secret;
 
-    clock_t startsetup = clock() / (CLOCKS_PER_SEC / 1000);
+    clock_t start = clock() / (CLOCKS_PER_SEC / 1000);
     generate_nizkpk_setup(&setup, &m_secret, n, man_sec, byteCount);
-    clock_t endsetup = clock() / (CLOCKS_PER_SEC / 1000);
-    printf("setup took %d ms \n", (endsetup - startsetup));
+    clock_t end = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("setup took %d ms \n", (end - start));
     //JSON_serialize_Setup_par(&setup);
     //Setup_SGM setup2;
     //JSON_deserialize_Setup_par(&setup2);
-
-
+    clock_t start_part, end_part;
+    start_part = clock() / (CLOCKS_PER_SEC / 1000);
+    start = clock() / (CLOCKS_PER_SEC / 1000);
     E_1 e1 = generate_e1(&setup, &m_secret);
-
-    //JSON_serialize_e1(&e1);
-    //E_1 e11;
-    //JSON_deserialize_e1(&e11);
-
-
-    Sender_S s_secret;
-    E_2 e2 = generate_e2(&setup, &s_secret, &e1, client_key, byteCount);
-
-    //JSON_serialize_e2(&e2);
-    //E_2 e22;
-    //JSON_deserialize_e2(&e22);
-
-
-    Sig_star sig = decrypt_e2(&setup, &m_secret, &e2);
-
-    //JSON_serialize_sig_star(&sig);
-    //Sig_star sig2;
-    //JSON_deserialize_sig_star(&sig2);
-
-    int verify = verify_sig(&sig, &m_secret, &s_secret, &setup);
-    if (verify == 1) {
-        printf("ERROR: Test NOT conducted successfully\n");
-    }
-
-    //ZK
+    end_part= clock() / (CLOCKS_PER_SEC / 1000);
+    printf("Manager e1 took %d ms \n", (end_part - start_part));
     ZK_man zk;
     ZK_man_private zk_priv;
+    start_part = clock() / (CLOCKS_PER_SEC / 1000);
     ZK_issuer_create(&m_secret, &setup, &zk, &zk_priv);
+    end_part = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("Manager ZK took %d ms \n", (end_part - start_part));
+    end = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("Manager zk and e1 took %d ms \n", (end - start));
 
-    //ZK_compute_Ts_Issuer(&m_secret,&setup, &zk, &zk_priv);
-    //generate_E_for_PK(&setup, &zk);
-    //ZK_compute_Zs_Issuer(&m_secret, &setup, &zk, &zk_priv);
-    
+    start_part = clock() / (CLOCKS_PER_SEC / 1000);
+    start = clock() / (CLOCKS_PER_SEC / 1000);
     if (check_issuer_proof_NI(&setup, &zk, &e1))
         printf("ZK checked sucesfully\n");
     else
     {
         printf("ZK failed \n");
     }
+    //JSON_serialize_e1(&e1);
+    //E_1 e11;
+    //JSON_deserialize_e1(&e11);
+    end_part = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("Check of man ZK took %d ms \n", (end_part - start_part));
+    Sender_S s_secret;
+    start_part = clock() / (CLOCKS_PER_SEC / 1000);
+    E_2 e2 = generate_e2(&setup, &s_secret, &e1, client_key, byteCount);
+    end_part = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("E2 took %d ms \n", (end_part - start_part));
+
+    start_part = clock() / (CLOCKS_PER_SEC / 1000);
+    ZK_user zk2;
+    generate_ZK_user(&setup, &zk2, &s_secret, &e1, &e2, curve);
+    end_part = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("ZK user took %d ms \n", (end_part - start_part));
+    end = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("User check, zk and e2 took %d ms \n", (end - start));
+
+    start = clock() / (CLOCKS_PER_SEC / 1000);
+
+    start_part = clock() / (CLOCKS_PER_SEC / 1000);
+    check_PK_user(&setup, &zk2, &e2, &e1, curve);
+    end_part = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("ZK check user took %d ms \n", (end_part - start_part));
+    //JSON_serialize_e2(&e2);
+    //E_2 e22;
+    //JSON_deserialize_e2(&e22);
+
+    start_part = clock() / (CLOCKS_PER_SEC / 1000);
+    Sig_star sig = decrypt_e2(&setup, &m_secret, &e2);
+    end_part = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("DEC took %d ms \n", (end_part - start_part));
+
+    end = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("manager dec and check zk took %d ms \n", (end - start));
+    //JSON_serialize_sig_star(&sig);
+    //Sig_star sig2;
+    //JSON_deserialize_sig_star(&sig2);
+
+    /*int verify = verify_sig(&sig, &m_secret, &s_secret, &setup);
+    if (verify == 1) {
+        printf("ERROR: Test NOT conducted successfully\n");
+    }*/
+
+    //ZK
+    
+
+    //ZK_compute_Ts_Issuer(&m_secret,&setup, &zk, &zk_priv);
+    //generate_E_for_PK(&setup, &zk);
+    //ZK_compute_Zs_Issuer(&m_secret, &setup, &zk, &zk_priv);
+    
+  
 
     /*mpz_t inv;
     mpz_init(inv);
     mpz_invert(inv, s_secret.r1, setup.q_EC);
     mpz_mul(sig.sig_star, sig.sig_star, inv);
     mpz_mod(sig.sig_star, sig.sig_star, setup.q_EC);*/
-    ZK_user zk2;
-    generate_ZK_user(&setup,  &zk2, &s_secret, &e1,&e2, curve);
-    check_PK_user(&setup, &zk2, &e2,&e1,curve);
     
-
     
+    uint8_t* expik = (uint8_t*)malloc(byteCount * sizeof(uint8_t));
+    uint8_t* rand = (uint8_t*)malloc(byteCount * sizeof(uint8_t));
+    mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
+    mpz_export(rand, NULL, 1, sizeof(rand[0]), 0, 0, s_secret.r1);
+    uECC_vli_bytesToNative(randomReturn, rand, byteCount); //we return randomized sum
+    free(rand);
+    return expik;
+    /*
     if (byteCount == 20) {
         uint8_t expik[20];
         mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
@@ -133,7 +170,7 @@ uint8_t* tutu(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCoun
         uECC_vli_bytesToNative(randomReturn, rand, byteCount);
         return expik;
     }
-
+    */
 
 
     //char  c{ '\0' };
@@ -163,7 +200,7 @@ void setup()
     const struct uECC_Curve_t* curves[5];
     int num_curves = 0;
     bool compareWithNormal = true;
-  
+ /*
 #if uECC_SUPPORTS_secp160r1
     curves[num_curves++] = uECC_secp160r1();
     
@@ -174,13 +211,13 @@ void setup()
 #endif
 #if uECC_SUPPORTS_secp224r1
     curves[num_curves++] = uECC_secp224r1();
-#endif
+#endif*/
 #if uECC_SUPPORTS_secp256r1
     curves[num_curves++] = uECC_secp256r1();
 #endif
-#if uECC_SUPPORTS_secp256k1
+/*#if uECC_SUPPORTS_secp256k1
     curves[num_curves++] = uECC_secp256k1();
-#endif
+#endif*/
 
     for (c = 0; c < num_curves; ++c)
     {
@@ -427,7 +464,7 @@ void setup()
 
         SignGSecondHalf(&x_list, &m_list, &parameters, sigma, sum);
         signSigma(sigma, &x_list, &parameters, &sigma_list);
-
+        
         //here we remove the r1 from sigmas ie. the client derandomizes sigmas, but the issuer doesnt know sigmas
         uECC_point_mult(sigma, sigma, randInTwoParty, curve);
         for (int i = 0; i < ISSUED; i++) {
@@ -453,26 +490,39 @@ void setup()
 
         uECC_word_t* S_k = new uECC_word_t[nativeNCount]();
         clock_t startDeclare = clock() / (CLOCKS_PER_SEC / 1000);
-        declareModified(&parameters, nonce, sigma, &sigma_list, &m_list, sigma_A, e, s_r, &s_m_list,client_private,S_k);
-        clock_t endDeclare = clock() / (CLOCKS_PER_SEC / 1000);
+        clock_t t;
+        t = clock();
 
-        printf("The declare algorithm is done, it took %d ms \n", (endDeclare-startDeclare));
+       
+       
+        declareModified(&parameters, nonce, sigma, &sigma_list, &m_list, sigma_A, e, s_r, &s_m_list,client_private,S_k);
+       
+        
+
+        clock_t endDeclare = clock() / (CLOCKS_PER_SEC / 1000);
+        t = clock() - t;
+        double time_taken = ((double)t) / (CLOCKS_PER_SEC); // in miliseconds
+
+        printf("The declare algorithm is done, it took %f ms \n", (time_taken));
         //b = millis();
         //Serial.print(" | ");
         //Serial.print(b - a);
 
         //a = millis();
         //bool passed = verify(&parameters, e, nonce, &s_m_list, s_r, sigma_A, &x_list, &m_list);
-        clock_t startVer = clock() / (CLOCKS_PER_SEC / 1000);
+        clock_t startVer = clock() ;
+        t = clock();
         bool passed = verifyModified(&parameters, e, nonce, &s_m_list, s_r, sigma_A, &x_list, &m_list,S_k);
-        clock_t endVer = clock() / (CLOCKS_PER_SEC / 1000);
+        clock_t endVer = clock();
+        t = clock() - t;
+        time_taken = ((double)t) / (CLOCKS_PER_SEC); // in seconds
         //b = millis();
         //Serial.print(" | ");
         //Serial.print(b - a);
 
         printf(passed ? "Result of KVAC verification: PASSED" : " Result of KVAC verification: FAILED");
         printf("\n");
-        printf("Verification took %d ms.\n",(endVer-startVer));
+        printf("Verification took %f s.\n",(time_taken));
        
 
 
@@ -506,9 +556,22 @@ void setup()
 
 int main()
 {
-    
+    /*mpz_t a, b;
+    mpz_inits(a, b, NULL);
+    size_t len = 4096;
+    generate_r_from_bitlenght(len, &a);
+    generate_r_from_bitlenght(len, &b);
+    mpz_t p, q, n;
+    mpz_inits(n,q, p, NULL);
+    generate_RSA_SSL(&p, &q, &n, 460);
+
+    clock_t start = clock() / (CLOCKS_PER_SEC / 1000);
+    mpz_powm(a, a, b, n);
+    clock_t end = clock() / (CLOCKS_PER_SEC / 1000);
+   
+    printf("POWM took %d ms.\n", (end - start));
+    printf("size of n: %zu\n", mpz_sizeinbase(n, 2));*/
     setup();
-    
     //tutu();
 }
 /*extern "C" {

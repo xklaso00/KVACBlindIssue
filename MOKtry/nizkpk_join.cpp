@@ -113,11 +113,15 @@ void generate_r_from_bitlenght(size_t length, mpz_t* r){
 
     //gmp_printf("attempt rakovina: %Zd \n", s);
     gmp_randstate_t rand;
-    gmp_randinit_default(rand);
-    gmp_randseed(rand,s);
-
+    gmp_randinit_mt(rand);
+    //gmp_randseed(rand,s);
+    get_rand_seed(buf, len);
+    mpz_import(s, len, 1, 1, 0, 0, buf);
+    //gmp_randseed_ui(rand, clock()*time(NULL));
+    gmp_randseed(rand, s);
     mpz_urandomb(*r, rand, length);
     
+    gmp_printf("attempt 3: %Zd \n", r);
     
     gmp_randclear(rand);
     mpz_clear(s);
@@ -134,9 +138,9 @@ void generate_RSA_SSL(mpz_t* p, mpz_t* q, mpz_t* n, size_t size){
 
     size *= 3*kappa;
 
-    //clock_t start, end;
-    double cpu_time_used;
-    
+    clock_t start, end;
+    //double cpu_time_used;
+    start= clock() / (CLOCKS_PER_SEC / 1000);
     generate_r_from_bitlenght( size/2+1,p);
     
     generate_r_from_bitlenght(size/2+1,q);
@@ -144,6 +148,11 @@ void generate_RSA_SSL(mpz_t* p, mpz_t* q, mpz_t* n, size_t size){
     mpz_nextprime(*p, *p);
 
     mpz_nextprime(*q, *q);
+    end = clock() / (CLOCKS_PER_SEC / 1000);
+
+    printf("P and Q generation took %ld ms \n", (end - start));
+    end = NULL;
+    start = NULL;
     //char  c{ '\0' };
     //char* pchar{ &c };
     //mpz_get_str(pchar, 16, *p);
@@ -174,6 +183,7 @@ void generate_RSA_SSL(mpz_t* p, mpz_t* q, mpz_t* n, size_t size){
 void generate_nizkpk_setup(Setup_SGM* setup, Manager_S* m_secret, uint8_t q_EC[], uint8_t manKey[], int byteCount) {
     
     //EC params
+    clock_t start, end;
     mpz_inits(setup->q_EC, NULL);
     //mpz_set_str(setup->q_EC, q_EC, 16);
     
@@ -262,7 +272,7 @@ void generate_nizkpk_setup(Setup_SGM* setup, Manager_S* m_secret, uint8_t q_EC[]
     printf("size of n: %zu\n", mpz_sizeinbase(setup->n, 2));
     printf("size of g: %zu\n", mpz_sizeinbase(setup->g, 2));
     printf("size of h: %zu\n", mpz_sizeinbase(setup->h, 2));
-
+    printf("size of n goth: %zu\n", mpz_sizeinbase(setup->n_goth, 2));
     mpz_clears(two, p_n, q_n, p_ng, q_ng, q2, rand_goth, NULL);
 
 }

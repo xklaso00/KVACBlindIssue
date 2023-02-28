@@ -4,7 +4,7 @@
 #define REVEALED 2
 
 void hash(const uint8_t *data, wordcount_t length, uint8_t *destination, SHA256 * sha256);
-void hashFromNative(uECC_word_t *source, wordcount_t num_words, wordcount_t byte_count, uint8_t *destination);
+//void hashFromNative(uECC_word_t *source, wordcount_t num_words, wordcount_t byte_count, uint8_t *destination);
 void hashUpdate(uECC_word_t *source, wordcount_t num_words, wordcount_t byte_count, SHA256 *sha256);
 
 void fillWithRandoms(uECC_List_t *list, uECC_Parameters_t *parameters);

@@ -110,6 +110,10 @@ typedef struct
 
 void generate_r_from_group(mpz_t* mod, mpz_t* r);
 
+void generate_r_from_bitlenght(size_t length, mpz_t* r);
+
+void generate_RSA_SSL(mpz_t* p, mpz_t* q, mpz_t* n, size_t size);
+
 void generate_nizkpk_setup(Setup_SGM* setup, Manager_S* m_secret, uint8_t q_EC[], uint8_t manKey[], int byteCount);
 
 E_1 generate_e1(Setup_SGM* setup, Manager_S* m_secret);
