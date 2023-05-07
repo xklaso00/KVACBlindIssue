@@ -1,7 +1,7 @@
-#include <types.hpp>
+#include "types.hpp"
 
 #define ISSUED 10
-#define REVEALED 2
+#define REVEALED 4
 
 void hash(const uint8_t *data, wordcount_t length, uint8_t *destination, SHA256 * sha256);
 //void hashFromNative(uECC_word_t *source, wordcount_t num_words, wordcount_t byte_count, uint8_t *destination);

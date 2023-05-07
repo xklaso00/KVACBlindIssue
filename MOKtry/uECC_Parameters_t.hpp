@@ -1,7 +1,7 @@
 #ifndef AAA_HEADER
 #define AAA_HEADER
 
-#include <uECC_vli.h>
+#include "uECC_vli.h"
 
 class uECC_Parameters_t
 {

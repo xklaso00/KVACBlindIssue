@@ -1,7 +1,7 @@
-#include <wbb.hpp>
+#include "wbb.hpp"
 #include <stdio.h>
 #include <vcruntime_string.h>
-#include<MOKtry.hpp>
+#include"MOKtry.hpp"
 static void printArray(const uECC_word_t *content, wordcount_t byteCount, bool newLine)
 {
     uint8_t *output = new uint8_t[byteCount]();
@@ -102,7 +102,7 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
         uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
         uint8_t client_Sec [20];
         uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-        gotBack=tutu(nBytes, man_Sec, client_Sec, 20,NULL, nowCurve);
+        gotBack=runNIZKPKForKVAC(nBytes, man_Sec, client_Sec, 20,NULL, nowCurve);
 
     }
     else if(nowCurve == uECC_secp192r1()) {
@@ -113,7 +113,7 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
         uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
         uint8_t client_Sec[24];
         uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-        gotBack = tutu(nBytes, man_Sec, client_Sec, 24, NULL, nowCurve);
+        gotBack = runNIZKPKForKVAC(nBytes, man_Sec, client_Sec, 24, NULL, nowCurve);
     }
     else if (nowCurve == uECC_secp224r1()) {
         
@@ -123,7 +123,7 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
         uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
         uint8_t client_Sec[28];
         uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-        gotBack = tutu(nBytes, man_Sec, client_Sec, 28, NULL, nowCurve);
+        gotBack = runNIZKPKForKVAC(nBytes, man_Sec, client_Sec, 28, NULL, nowCurve);
     }
     else {
         uint8_t nBytes[32];
@@ -132,7 +132,7 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
         uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
         uint8_t client_Sec[32];
         uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-        gotBack = tutu(nBytes, man_Sec, client_Sec, 32, NULL, nowCurve);
+        gotBack = runNIZKPKForKVAC(nBytes, man_Sec, client_Sec, 32, NULL, nowCurve);
     }
 
 
@@ -152,7 +152,7 @@ void signGModified(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* 
     uECC_vli_modInv(sum, sum, parameters->n, parameters->nativeNCount);
     uECC_point_mult(targetSigma, parameters->g, sum, parameters->curve);
 }
-
+//compute d=(x0+x1m1...xnmn) for blind issuance
 void SignGFirstHalf(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* parameters, uECC_word_t* sum) {
     //uECC_word_t* sum = new uECC_word_t[parameters->nativeNCount]();
 
@@ -165,13 +165,13 @@ void SignGFirstHalf(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t*
 
     uECC_vli_modAdd(sum, sum, x_list->get(0)->content, parameters->n, parameters->nativeNCount);
 }
-
+//compute sigma*
 void SignGSecondHalf(uECC_List_t* x_list, uECC_List_t* m_list, uECC_Parameters_t* parameters, uECC_word_t* targetSigma, uECC_word_t* sum) {
     uECC_vli_modInv(sum, sum, parameters->n, parameters->nativeNCount);
     uECC_point_mult(targetSigma, parameters->g, sum, parameters->curve);
 }
 
-//COMPUTATION OF SIGMAS FOR EACH X
+//COMPUTATION OF SIGMAS* FOR EACH X
 void signSigma(uECC_word_t *sigma, uECC_List_t *x_list, uECC_Parameters_t *parameters, uECC_List_t *target_sigma_list)
 {
     for (int i = 0; i < ISSUED; i++)

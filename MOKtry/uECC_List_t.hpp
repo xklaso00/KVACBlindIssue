@@ -1,7 +1,7 @@
 
 #ifndef REE_HEADER
 #define REE_HEADER
-#include <uECC_vli.h>
+#include "uECC_vli.h"
 
 
 class uECC_Element_t

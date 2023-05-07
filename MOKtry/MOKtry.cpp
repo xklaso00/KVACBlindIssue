@@ -2,27 +2,19 @@
 //
 
 #include <iostream>
-#include <uECC_vli.h>
+#include "uECC_vli.h"
 
-#include <wbb.hpp>
-#include<nizkpk_join.hpp>
+#include "wbb.hpp"
+#include "nizkpk_join.hpp"
 #include <stdio.h>
 #include <stdlib.h>
 #include <gmp.h>
 #include "MOKtry.hpp"
 #include <time.h>
 
-// Spuštění programu: Ctrl+F5 nebo nabídka Ladit > Spustit bez ladění
-// Ladění programu: F5 nebo nabídka Ladit > Spustit ladění
-
-// Tipy pro zahájení práce:
-//   1. K přidání nebo správě souborů použijte okno Průzkumník řešení.
-//   2. Pro připojení ke správě zdrojového kódu použijte okno Team Explorer.
-//   3. K zobrazení výstupu sestavení a dalších zpráv použijte okno Výstup.
-//   4. K zobrazení chyb použijte okno Seznam chyb.
-//   5. Pokud chcete vytvořit nové soubory kódu, přejděte na Projekt > Přidat novou položku. Pokud chcete přidat do projektu existující soubory kódu, přejděte na Projekt > Přidat existující položku.
-//   6. Pokud budete chtít v budoucnu znovu otevřít tento projekt, přejděte na Soubor > Otevřít > Projekt a vyberte příslušný soubor .sln.
-uint8_t* tutu(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCount, uECC_word_t* randomReturn, uECC_Curve curve) {
+//this function runs the NIZKPK, it takes the N of the curve, man_sec is the issuer d (x0+x1m1... it is the otput from first half of issue), clients sk
+//randomReturn is the pointer where the client r1 is returned and curve is the curve used
+uint8_t* runNIZKPKForKVAC(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCount, uECC_word_t* randomReturn, uECC_Curve curve) {
 
     // Values init
     //const char* q_EC = "0100000000000000000001f4c8f927aed3ca752257";
@@ -93,9 +85,7 @@ uint8_t* tutu(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCoun
     check_PK_user(&setup, &zk2, &e2, &e1, curve);
     end_part = clock() / (CLOCKS_PER_SEC / 1000);
     printf("ZK check user took %d ms \n", (end_part - start_part));
-    //JSON_serialize_e2(&e2);
-    //E_2 e22;
-    //JSON_deserialize_e2(&e22);
+   
 
     start_part = clock() / (CLOCKS_PER_SEC / 1000);
     Sig_star sig = decrypt_e2(&setup, &m_secret, &e2);
@@ -104,30 +94,7 @@ uint8_t* tutu(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCoun
 
     end = clock() / (CLOCKS_PER_SEC / 1000);
     printf("manager dec and check zk took %d ms \n", (end - start));
-    //JSON_serialize_sig_star(&sig);
-    //Sig_star sig2;
-    //JSON_deserialize_sig_star(&sig2);
-
-    /*int verify = verify_sig(&sig, &m_secret, &s_secret, &setup);
-    if (verify == 1) {
-        printf("ERROR: Test NOT conducted successfully\n");
-    }*/
-
-    //ZK
-    
-
-    //ZK_compute_Ts_Issuer(&m_secret,&setup, &zk, &zk_priv);
-    //generate_E_for_PK(&setup, &zk);
-    //ZK_compute_Zs_Issuer(&m_secret, &setup, &zk, &zk_priv);
-    
-  
-
-    /*mpz_t inv;
-    mpz_init(inv);
-    mpz_invert(inv, s_secret.r1, setup.q_EC);
-    mpz_mul(sig.sig_star, sig.sig_star, inv);
-    mpz_mod(sig.sig_star, sig.sig_star, setup.q_EC);*/
-    
+   
     
     uint8_t* expik = (uint8_t*)malloc(byteCount * sizeof(uint8_t));
     uint8_t* rand = (uint8_t*)malloc(byteCount * sizeof(uint8_t));
@@ -136,57 +103,7 @@ uint8_t* tutu(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCoun
     uECC_vli_bytesToNative(randomReturn, rand, byteCount); //we return randomized sum
     free(rand);
     return expik;
-    /*
-    if (byteCount == 20) {
-        uint8_t expik[20];
-        mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
-        uint8_t rand[20];
-        mpz_export(rand, NULL, 1, sizeof(rand[0]), 0, 0, s_secret.r1);
-        uECC_vli_bytesToNative(randomReturn, rand, byteCount); //we return randomized sum
-
-        return expik;
-    }
-    else if (byteCount == 24) {
-        uint8_t expik[24];
-        mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
-        uint8_t rand[24];
-        mpz_export(rand, NULL, 1, sizeof(rand[0]), 0, 0, s_secret.r1);
-        uECC_vli_bytesToNative(randomReturn, rand, byteCount);
-        return expik;
-    }
-    else if (byteCount == 28) {
-        uint8_t expik[28];
-        mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
-        uint8_t rand[28];
-        mpz_export(rand, NULL, 1, sizeof(rand[0]), 0, 0, s_secret.r1);
-        uECC_vli_bytesToNative(randomReturn, rand, byteCount);
-        return expik;
-    }
-    else {
-        uint8_t expik[32];
-        mpz_export(expik, NULL, 1, sizeof(expik[0]), 0, 0, sig.sig_star);
-        uint8_t rand[32];
-        mpz_export(rand, NULL, 1, sizeof(rand[0]), 0, 0, s_secret.r1);
-        uECC_vli_bytesToNative(randomReturn, rand, byteCount);
-        return expik;
-    }
-    */
-
-
-    //char  c{ '\0' };
-    //char* pchar{ &c };
-    //mpz_get_str(pchar, 16, sig.sig_star);
-
-    //gmp_printf("Sk_m: %Zd\n", m_secret.sk_m);
-    //gmp_printf("Sk_i: %Zd\n", s_secret.sk_i);
-
-
-    //gmp_printf("r: %Zd\n", m_secret.r);
-    //gmp_printf("r1: %Zd\n", s_secret.r1);
-    //gmp_printf("r2: %Zd\n", s_secret.r2);
-    //gmp_printf("r_bar: %Zd\n", s_secret.r_bar);
-
-    return NULL;
+    
 }
 
 
@@ -214,15 +131,40 @@ void setup()
 #endif*/
 #if uECC_SUPPORTS_secp256r1
     curves[num_curves++] = uECC_secp256r1();
-#endif
-/*#if uECC_SUPPORTS_secp256k1
+#endif/*
+#if uECC_SUPPORTS_secp256k1
     curves[num_curves++] = uECC_secp256k1();
 #endif*/
+    clock_t start_1, end_1;
+    //double cpu_time_used;
+    /*
+    mpz_t pTry, qTry,nTry,aTry,gTry;
+    mpz_inits(pTry, qTry, nTry, aTry, gTry,NULL);
+    generate_r_from_bitlenght(1024, &pTry);
+
+    start_1 = clock() / (CLOCKS_PER_SEC / 1000);
+    generate_r_from_bitlenght(1024, &qTry);
+    mpz_nextprime(pTry, pTry);
+    end_1 = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("one prime of 1024 took %ld ms \n", (end_1 - start_1));
+    mpz_nextprime(qTry, qTry);
+
+    mpz_mul(nTry, pTry, qTry);
+    generate_r_from_bitlenght(2048, &gTry);
+    generate_r_from_bitlenght(2048, &aTry);
+    mpz_mod(gTry, gTry, nTry);
+    mpz_mod(aTry, aTry, nTry);
+
+    start_1 = clock() / (CLOCKS_PER_SEC / 1000);
+    mpz_powm(gTry, gTry, aTry, nTry);
+    end_1 = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("one exp in 4096 took %ld ms \n", (end_1 - start_1));
+    */
+
+
 
     for (c = 0; c < num_curves; ++c)
     {
-        
-        
         const struct uECC_Curve_t* curve = curves[c];
         if (curve == uECC_secp160r1())
             printf("Testing curve secp160r1... \n");
@@ -396,15 +338,11 @@ void setup()
         uECC_word_t* client_private = new uECC_word_t[nativeNCount]();
         uECC_generate_random_int(client_private, n, nativeNCount);
 
-        //long a = millis();
-        //issueModified(&parameters, &m_list, &x_list, sigma, &sigma_list,client_private);
-        //issue(&parameters, &m_list, &x_list, sigma, &sigma_list);
-        // 
         //here we have 2party issue
-        
         printf("Starting the issue algorithms...\n");
         clock_t startIssue = clock() / (CLOCKS_PER_SEC / 1000);
         uECC_word_t* sum = new uECC_word_t[nativeNCount]();
+        //the first part computes the d as (x0+x1m1+...xnmn) 
         SignGFirstHalf(&x_list, &m_list, &parameters, sum);
 
         printf("Starting the 2-party computation...\n");
@@ -412,18 +350,28 @@ void setup()
 
         uECC_word_t* randInTwoParty = new uECC_word_t[nativeNCount]();
         uint8_t* gotBack;
+
+        //dynamic allocation for parameters that have to be passed to the NIZKPK part, this might not work for the smallest curve, as there are some problems with the representing of the numbers
+        uint8_t *nBytes= (uint8_t*)malloc(byteCount * sizeof(uint8_t));
+        uint8_t *man_Sec = (uint8_t*)malloc(byteCount * sizeof(uint8_t));
+        uint8_t * client_Sec= (uint8_t*)malloc(byteCount * sizeof(uint8_t));
+        uECC_vli_nativeToBytes(nBytes, byteCount, n);
+        uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
+        uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
+        gotBack = runNIZKPKForKVAC(nBytes, man_Sec, client_Sec, byteCount, randInTwoParty, curve);
+        free(nBytes);
+        free(man_Sec);
+        free(client_Sec);
+        //this was before malloc was used, now should not be used if the allocation works fine
+        /*
         if (curve == uECC_secp160r1()) {
             uint8_t nBytes[20];
             uECC_vli_nativeToBytes(nBytes, byteCount, n);
             uint8_t man_Sec[20];
             uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
-            uint8_t client_Sec[24];
-            
+            uint8_t client_Sec[24];      
             uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-            gotBack = tutu(nBytes, man_Sec, client_Sec, 20, randInTwoParty,curve);
-            
-          
-
+            gotBack = runNIZKPKForKVAC(nBytes, man_Sec, client_Sec, 20, randInTwoParty,curve);
         }
         else if (curve == uECC_secp192r1()) {
 
@@ -433,7 +381,7 @@ void setup()
             uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
             uint8_t client_Sec[24];
             uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-            gotBack = tutu(nBytes, man_Sec, client_Sec, 24, randInTwoParty,curve);
+            gotBack = runNIZKPKForKVAC(nBytes, man_Sec, client_Sec, 24, randInTwoParty,curve);
         }
         else if (curve == uECC_secp224r1()) {
 
@@ -443,7 +391,7 @@ void setup()
             uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
             uint8_t client_Sec[28];
             uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-            gotBack = tutu(nBytes, man_Sec, client_Sec, 28, randInTwoParty,curve);
+            gotBack = runNIZKPKForKVAC(nBytes, man_Sec, client_Sec, 28, randInTwoParty,curve);
         }
         else {
             uint8_t nBytes[32];
@@ -452,15 +400,13 @@ void setup()
             uECC_vli_nativeToBytes(man_Sec, byteCount, sum);
             uint8_t client_Sec[32];
             uECC_vli_nativeToBytes(client_Sec, byteCount, client_private);
-            gotBack = tutu(nBytes, man_Sec, client_Sec, 32, randInTwoParty,curve);
+            gotBack = runNIZKPKForKVAC(nBytes, man_Sec, client_Sec, 32, randInTwoParty,curve);
             
-        }
+        }*/
         uECC_vli_bytesToNative(sum, gotBack, byteCount);
        
         clock_t end = clock() / (CLOCKS_PER_SEC / 1000); //in ms
         printf("2-party computation done, it took %d ms in total. \n", (end - start));
-        
-
 
         SignGSecondHalf(&x_list, &m_list, &parameters, sigma, sum);
         signSigma(sigma, &x_list, &parameters, &sigma_list);
@@ -490,8 +436,8 @@ void setup()
 
         uECC_word_t* S_k = new uECC_word_t[nativeNCount]();
         clock_t startDeclare = clock() / (CLOCKS_PER_SEC / 1000);
-        clock_t t;
-        t = clock();
+        //clock_t t;
+        //t = clock();
 
        
        
@@ -500,8 +446,8 @@ void setup()
         
 
         clock_t endDeclare = clock() / (CLOCKS_PER_SEC / 1000);
-        t = clock() - t;
-        double time_taken = ((double)t) / (CLOCKS_PER_SEC); // in miliseconds
+        //t = clock() - t;
+        double time_taken = endDeclare - startDeclare; // in miliseconds
 
         printf("The declare algorithm is done, it took %f ms \n", (time_taken));
         //b = millis();
@@ -511,11 +457,11 @@ void setup()
         //a = millis();
         //bool passed = verify(&parameters, e, nonce, &s_m_list, s_r, sigma_A, &x_list, &m_list);
         clock_t startVer = clock() ;
-        t = clock();
+        //t = clock();
         bool passed = verifyModified(&parameters, e, nonce, &s_m_list, s_r, sigma_A, &x_list, &m_list,S_k);
         clock_t endVer = clock();
-        t = clock() - t;
-        time_taken = ((double)t) / (CLOCKS_PER_SEC); // in seconds
+        //t = clock() - t;
+        time_taken = endVer-startVer; // in seconds
         //b = millis();
         //Serial.print(" | ");
         //Serial.print(b - a);
@@ -571,6 +517,22 @@ int main()
    
     printf("POWM took %d ms.\n", (end - start));
     printf("size of n: %zu\n", mpz_sizeinbase(n, 2));*/
+
+    //test here
+    /*mpz_t p, q, n2, r1, r2;
+    mpz_inits(p, q, n2, r1, r2, NULL);
+    generate_r_from_bitlenght(2048, &p);
+    generate_r_from_bitlenght(2048, &q);
+    mpz_nextprime(p, p);
+    mpz_nextprime(q, q);
+    mpz_mul(n2, p, q);
+    generate_r_from_bitlenght(4096, &r1);
+    generate_r_from_bitlenght(4096, &r2);
+
+    clock_t reee1 = clock() / (CLOCKS_PER_SEC / 1000);
+    mpz_powm(r1, r1, r2, n2);
+    clock_t reee2 = clock() / (CLOCKS_PER_SEC / 1000);
+    printf("TEST TOOK %ld ms \n", (reee2 - reee1));*/
     setup();
     //tutu();
 }

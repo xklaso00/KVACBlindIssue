@@ -1,4 +1,4 @@
-#include <uECC_Parameters_t.hpp>
+#include "uECC_Parameters_t.hpp"
 
 uECC_Parameters_t::uECC_Parameters_t(const uECC_Curve_t *fromCurve)
 {

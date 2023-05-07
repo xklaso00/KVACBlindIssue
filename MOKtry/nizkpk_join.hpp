@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
-#include <uECC_Parameters_t.hpp>
-#include <uECC_List_t.hpp>
-#include <uECC_vli.h>
+#include "uECC_Parameters_t.hpp"
+#include "uECC_List_t.hpp"
+#include "uECC_vli.h"
 typedef struct
 {
     mpz_t q_EC;   
@@ -127,8 +127,6 @@ int verify_sig(Sig_star* sig, Manager_S* m_secret, Sender_S* s_secret, Setup_SGM
 void generate_E_for_PK(Setup_SGM* setup, ZK_man* zk);
 
 void ZK_compute_Zs_Issuer(Manager_S* m_secret, Setup_SGM* setup, ZK_man* zk, ZK_man_private* zk_private);
-
-bool check_issuer_zk(Setup_SGM* setup, ZK_man* zk, E_1* e_1);
 
 void ZK_compute_Ts_Issuer(Manager_S* man_s, Setup_SGM* setup, ZK_man* zk, ZK_man_private* zk_private);
 

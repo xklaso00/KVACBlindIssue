@@ -7,7 +7,7 @@
 #include <openssl/rand.h>
 #include <openssl/types.h>
 #include <openssl/crypto.h>
-#include <SHA256.h>
+#include "SHA256.h"
 #include <time.h>
 #define kappa 3
 
@@ -112,18 +112,18 @@ void generate_r_from_bitlenght(size_t length, mpz_t* r){
     mpz_random(s,length);
 
     //gmp_printf("attempt rakovina: %Zd \n", s);
-    gmp_randstate_t rand;
-    gmp_randinit_mt(rand);
+    gmp_randstate_t rando;
+    gmp_randinit_mt(rando);
     //gmp_randseed(rand,s);
-    get_rand_seed(buf, len);
-    mpz_import(s, len, 1, 1, 0, 0, buf);
-    //gmp_randseed_ui(rand, clock()*time(NULL));
-    gmp_randseed(rand, s);
-    mpz_urandomb(*r, rand, length);
+    //get_rand_seed(buf, len);
+    //mpz_import(s, len, 1, 1, 0, 0, buf);
+    gmp_randseed_ui(rando, rand()*clock()*time(NULL));
+    //gmp_randseed(rand, s);
+    mpz_urandomb(*r, rando, length);
     
-    gmp_printf("attempt 3: %Zd \n", r);
+    //gmp_printf("attempt 3: %Zd \n", r);
     
-    gmp_randclear(rand);
+    gmp_randclear(rando);
     mpz_clear(s);
     free(buf);
 
@@ -539,7 +539,7 @@ void ZK_issuer_create(Manager_S* man_sec, Setup_SGM* setup, ZK_man* zk, ZK_man_p
     mpz_t phi_n2;
     mpz_inits(zk->t1, zk->t2, zk_private->rho1, zk_private->rho2, zk_private->rho3, phi_n2, NULL);
     mpz_mul(phi_n2, man_sec->phi_n, setup->n);
-
+    
     generate_r_from_group(&setup->n_goth, &zk_private->rho1);
     generate_r_from_group(&setup->n2, &zk_private->rho2);
     generate_r_from_group(&setup->n_goth, &zk_private->rho3);
@@ -560,7 +560,7 @@ void ZK_issuer_create(Manager_S* man_sec, Setup_SGM* setup, ZK_man* zk, ZK_man_p
     mpz_mul(zk->t2, zk->t2, mid2);
     mpz_mod(zk->t2, zk->t2, setup->n_goth);
     mpz_clears(mid2, phi_n2, NULL);
-
+   
     mpz_init(zk->e);
     //now we hash to get e
     
@@ -613,57 +613,7 @@ void ZK_issuer_create(Manager_S* man_sec, Setup_SGM* setup, ZK_man* zk, ZK_man_p
     
 }
 
-bool check_issuer_zk(Setup_SGM* setup, ZK_man* zk, E_1* e_1)
-{
-    mpz_t hz1, gz2, frac,left,right,hn2;
-    mpz_inits(hz1, gz2, frac, left,right,hn2,NULL);
-    mpz_powm(hz1, setup->h, zk->z1, setup->n2);
-    mpz_powm(gz2, setup->g, zk->z2, setup->n2);
-    mpz_mul(left, hz1, gz2);
-    mpz_mod(left, left, setup->n2);
 
-    mpz_powm(hn2, setup->h, setup->n_half, setup->n2);
-    mpz_invert(frac, hn2, setup->n2);
-    mpz_mul(frac, e_1->e1, frac);
-    mpz_mod(frac, frac, setup->n2);
-    mpz_powm(right, frac, zk->e, setup->n2);
-    mpz_mul(right, right, zk->t1);
-    mpz_mod(right, right, setup->n2);
-
-    if (mpz_cmp(left, right) != 0) 
-    {
-        mpz_clears(hz1, gz2, frac, left, right, hn2, NULL);
-        return false;
-    }
-    
-
-    mpz_t gz1, hz3, left2, right2;
-    mpz_inits(gz1, hz3, left2, right2, NULL);
-    mpz_powm(gz1, setup->g_goth, zk->z1,setup->n_goth);
-    mpz_powm(hz3, setup->h_goth, zk->z3, setup->n_goth);
-    mpz_mul(left2, gz1, hz3);
-    mpz_mod(left2, left2, setup->n_goth);
-
-    mpz_powm(right2, e_1->c_goth, zk->e, setup->n_goth);
-    mpz_mul(right2, right2, zk->t2);
-    mpz_mod(right2, right2, setup->n_goth);
-
-    if (mpz_cmp(left2, right2) == 0) 
-    {
-        
-
-        mpz_clears(gz1, hz3, left2, right2, NULL);
-        mpz_clears(hz1, gz2, frac, left, right, hn2, NULL);
-        return true;
-    }
-    else {
-        mpz_clears(gz1, hz3, left2, right2, NULL);
-        mpz_clears(hz1, gz2, frac, left, right, hn2, NULL);
-        return false;
-    }
-
-    
-}
 
 bool check_issuer_proof_NI(Setup_SGM* setup, ZK_man* zk, E_1* e_1) {
     mpz_t hz1, gz2, frac, c1, hn2, einv;
@@ -759,7 +709,6 @@ void generate_ZK_user(Setup_SGM* setup, ZK_user* zk, Sender_S * user_sk, E_1* e1
     generate_r_from_group(&setup->n_goth, &rhoU);
     //lets compute pk_i for now
 
-    
     const uECC_word_t* nCurve = uECC_curve_n(curve);
     const uECC_word_t* gCurve = uECC_curve_G(curve);
     const wordcount_t nativeCount = uECC_curve_num_words(curve);
@@ -845,10 +794,7 @@ void generate_ZK_user(Setup_SGM* setup, ZK_user* zk, Sender_S * user_sk, E_1* e1
     mpz_mul(zk->z2, zk->e, user_sk->r2);
     mpz_add(zk->z2, zk->z2, rho2);
     mpz_mul(zk->zu, zk->e, u);
-    //ree
-
-
-
+    
     mpz_add(zk->zu, zk->zu, rhoU); //modified here?
     mpz_mul(zk->z_goth, zk->e, user_sk->r_bar);
     mpz_add(zk->z_goth, zk->z_goth, rhoGoth);
@@ -859,25 +805,6 @@ void generate_ZK_user(Setup_SGM* setup, ZK_user* zk, Sender_S * user_sk, E_1* e1
     mpz_mul(zk->z_aph, zk->e, sk_i_aph);
     mpz_add(zk->z_aph, zk->z_aph, rhoAph);
 
-    //this was just a check of the =1 eq to find out what was wrong
-    /*mpz_t test_one, one, helpone;
-    mpz_inits(test_one, one, helpone, NULL);
-    mpz_set_ui(one, 1);
-    mpz_powm(test_one, e2->c2_goth, user_sk->r1, setup->n_goth);
-    mpz_invert(helpone, setup->g_goth, setup->n_goth);
-    mpz_powm(helpone, helpone, sk_i_aph, setup->n_goth);
-    mpz_mul(test_one, test_one, helpone);
-    
-    mpz_powm(helpone, setup->h_goth, u, setup->n_goth);
-   
-    //mpz_invert(helpone, helpone, setup->n_goth);
-
-    mpz_mul(test_one, test_one, helpone);
-    mpz_mod(test_one, test_one, setup->n_goth);
-    if (mpz_cmp(test_one, one) == 0)
-        printf("at least this shit works \n");*/
-    
-    
 
     mpz_clears(c1, c2, c3, help, alpha, beta, sk_i_aph, u,NULL);
 
