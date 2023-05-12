@@ -16,37 +16,31 @@
 //randomReturn is the pointer where the client r1 is returned and curve is the curve used
 uint8_t* runNIZKPKForKVAC(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], int byteCount, uECC_word_t* randomReturn, uECC_Curve curve) {
 
-    // Values init
-    //const char* q_EC = "0100000000000000000001f4c8f927aed3ca752257";
-    //char* q_EC = reinterpret_cast<char*>(n);
-   /* printf("bytecount: %d:", 20);
-    printf("\n");
-
-    for (int i = 0; i < 10; i++) {
-        printf("%x", q_EC[i]);
-    }*/
-    //char* q_EC = "74";
 
     Setup_SGM setup;
     Manager_S m_secret;
 
     clock_t start = clock() / (CLOCKS_PER_SEC / 1000);
+
     generate_nizkpk_setup(&setup, &m_secret, n, man_sec, byteCount);
+
     clock_t end = clock() / (CLOCKS_PER_SEC / 1000);
     printf("setup took %d ms \n", (end - start));
-    //JSON_serialize_Setup_par(&setup);
-    //Setup_SGM setup2;
-    //JSON_deserialize_Setup_par(&setup2);
+    
     clock_t start_part, end_part;
     start_part = clock() / (CLOCKS_PER_SEC / 1000);
     start = clock() / (CLOCKS_PER_SEC / 1000);
+
     E_1 e1 = generate_e1(&setup, &m_secret);
+
     end_part= clock() / (CLOCKS_PER_SEC / 1000);
     printf("Manager e1 took %d ms \n", (end_part - start_part));
     ZK_man zk;
     ZK_man_private zk_priv;
     start_part = clock() / (CLOCKS_PER_SEC / 1000);
+
     ZK_issuer_create(&m_secret, &setup, &zk, &zk_priv);
+
     end_part = clock() / (CLOCKS_PER_SEC / 1000);
     printf("Manager ZK took %d ms \n", (end_part - start_part));
     end = clock() / (CLOCKS_PER_SEC / 1000);
@@ -54,6 +48,7 @@ uint8_t* runNIZKPKForKVAC(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], 
 
     start_part = clock() / (CLOCKS_PER_SEC / 1000);
     start = clock() / (CLOCKS_PER_SEC / 1000);
+
     if (check_issuer_proof_NI(&setup, &zk, &e1))
         printf("ZK checked sucesfully\n");
     else
@@ -67,13 +62,16 @@ uint8_t* runNIZKPKForKVAC(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], 
     printf("Check of man ZK took %d ms \n", (end_part - start_part));
     Sender_S s_secret;
     start_part = clock() / (CLOCKS_PER_SEC / 1000);
+
     E_2 e2 = generate_e2(&setup, &s_secret, &e1, client_key, byteCount);
+
     end_part = clock() / (CLOCKS_PER_SEC / 1000);
     printf("E2 took %d ms \n", (end_part - start_part));
-
     start_part = clock() / (CLOCKS_PER_SEC / 1000);
     ZK_user zk2;
+
     generate_ZK_user(&setup, &zk2, &s_secret, &e1, &e2, curve);
+
     end_part = clock() / (CLOCKS_PER_SEC / 1000);
     printf("ZK user took %d ms \n", (end_part - start_part));
     end = clock() / (CLOCKS_PER_SEC / 1000);
@@ -82,13 +80,17 @@ uint8_t* runNIZKPKForKVAC(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], 
     start = clock() / (CLOCKS_PER_SEC / 1000);
 
     start_part = clock() / (CLOCKS_PER_SEC / 1000);
+
     check_PK_user(&setup, &zk2, &e2, &e1, curve);
+
     end_part = clock() / (CLOCKS_PER_SEC / 1000);
     printf("ZK check user took %d ms \n", (end_part - start_part));
    
 
     start_part = clock() / (CLOCKS_PER_SEC / 1000);
+
     Sig_star sig = decrypt_e2(&setup, &m_secret, &e2);
+
     end_part = clock() / (CLOCKS_PER_SEC / 1000);
     printf("DEC took %d ms \n", (end_part - start_part));
 
@@ -106,12 +108,9 @@ uint8_t* runNIZKPKForKVAC(uint8_t n[], uint8_t man_sec[], uint8_t client_key[], 
     
 }
 
-
+//the setup code from KVAC now modified, you can uncomment the other curves if you want it test for all the curves
 void setup()
 {
-    // put your setup code here, to run once:
-    //Serial.begin(9600);
-    //uECC_set_rng(&RandomNumberGenerator);
 
     int c;
     const struct uECC_Curve_t* curves[5];
@@ -136,30 +135,6 @@ void setup()
     curves[num_curves++] = uECC_secp256k1();
 #endif*/
     clock_t start_1, end_1;
-    //double cpu_time_used;
-    /*
-    mpz_t pTry, qTry,nTry,aTry,gTry;
-    mpz_inits(pTry, qTry, nTry, aTry, gTry,NULL);
-    generate_r_from_bitlenght(1024, &pTry);
-
-    start_1 = clock() / (CLOCKS_PER_SEC / 1000);
-    generate_r_from_bitlenght(1024, &qTry);
-    mpz_nextprime(pTry, pTry);
-    end_1 = clock() / (CLOCKS_PER_SEC / 1000);
-    printf("one prime of 1024 took %ld ms \n", (end_1 - start_1));
-    mpz_nextprime(qTry, qTry);
-
-    mpz_mul(nTry, pTry, qTry);
-    generate_r_from_bitlenght(2048, &gTry);
-    generate_r_from_bitlenght(2048, &aTry);
-    mpz_mod(gTry, gTry, nTry);
-    mpz_mod(aTry, aTry, nTry);
-
-    start_1 = clock() / (CLOCKS_PER_SEC / 1000);
-    mpz_powm(gTry, gTry, aTry, nTry);
-    end_1 = clock() / (CLOCKS_PER_SEC / 1000);
-    printf("one exp in 4096 took %ld ms \n", (end_1 - start_1));
-    */
 
 
 
@@ -421,50 +396,31 @@ void setup()
 
         
         
-        //std::cout << std::hex << static_cast<int>(sigmaBytes) << std::endl;
-
-        //long b = millis();
-
-        //Serial.print(" || ");
-        //Serial.print(b - a);
+      
 
         uECC_word_t* nonce = new uECC_word_t[nativeNCount]();
         uECC_generate_random_int(nonce, n, nativeNCount);
 
-        //a = millis();
-        //declare(&parameters, nonce, sigma, &sigma_list, &m_list, sigma_A, e, s_r, &s_m_list);
-
         uECC_word_t* S_k = new uECC_word_t[nativeNCount]();
         clock_t startDeclare = clock() / (CLOCKS_PER_SEC / 1000);
-        //clock_t t;
-        //t = clock();
-
-       
        
         declareModified(&parameters, nonce, sigma, &sigma_list, &m_list, sigma_A, e, s_r, &s_m_list,client_private,S_k);
        
         
 
         clock_t endDeclare = clock() / (CLOCKS_PER_SEC / 1000);
-        //t = clock() - t;
+        
         double time_taken = endDeclare - startDeclare; // in miliseconds
 
         printf("The declare algorithm is done, it took %f ms \n", (time_taken));
-        //b = millis();
-        //Serial.print(" | ");
-        //Serial.print(b - a);
-
-        //a = millis();
-        //bool passed = verify(&parameters, e, nonce, &s_m_list, s_r, sigma_A, &x_list, &m_list);
+        
         clock_t startVer = clock() ;
-        //t = clock();
+        
         bool passed = verifyModified(&parameters, e, nonce, &s_m_list, s_r, sigma_A, &x_list, &m_list,S_k);
         clock_t endVer = clock();
-        //t = clock() - t;
-        time_taken = endVer-startVer; // in seconds
-        //b = millis();
-        //Serial.print(" | ");
-        //Serial.print(b - a);
+        
+        time_taken = endVer-startVer; 
+        
 
         printf(passed ? "Result of KVAC verification: PASSED" : " Result of KVAC verification: FAILED");
         printf("\n");
@@ -494,7 +450,7 @@ void setup()
             
         }
         printf("\n");
-        //Serial.println();
+        
     }
 }
 
@@ -502,42 +458,7 @@ void setup()
 
 int main()
 {
-    /*mpz_t a, b;
-    mpz_inits(a, b, NULL);
-    size_t len = 4096;
-    generate_r_from_bitlenght(len, &a);
-    generate_r_from_bitlenght(len, &b);
-    mpz_t p, q, n;
-    mpz_inits(n,q, p, NULL);
-    generate_RSA_SSL(&p, &q, &n, 460);
-
-    clock_t start = clock() / (CLOCKS_PER_SEC / 1000);
-    mpz_powm(a, a, b, n);
-    clock_t end = clock() / (CLOCKS_PER_SEC / 1000);
-   
-    printf("POWM took %d ms.\n", (end - start));
-    printf("size of n: %zu\n", mpz_sizeinbase(n, 2));*/
-
-    //test here
-    /*mpz_t p, q, n2, r1, r2;
-    mpz_inits(p, q, n2, r1, r2, NULL);
-    generate_r_from_bitlenght(2048, &p);
-    generate_r_from_bitlenght(2048, &q);
-    mpz_nextprime(p, p);
-    mpz_nextprime(q, q);
-    mpz_mul(n2, p, q);
-    generate_r_from_bitlenght(4096, &r1);
-    generate_r_from_bitlenght(4096, &r2);
-
-    clock_t reee1 = clock() / (CLOCKS_PER_SEC / 1000);
-    mpz_powm(r1, r1, r2, n2);
-    clock_t reee2 = clock() / (CLOCKS_PER_SEC / 1000);
-    printf("TEST TOOK %ld ms \n", (reee2 - reee1));*/
+    
     setup();
-    //tutu();
+    
 }
-/*extern "C" {
-    __declspec(dllexport) int workPls() {
-        setup();
-    }
-}*/

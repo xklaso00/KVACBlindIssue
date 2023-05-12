@@ -3,10 +3,10 @@
 #include <string.h>
 #include <gmp.h>
 #include "nizkpk_join.hpp"
-#include <openssl/bn.h>
-#include <openssl/rand.h>
-#include <openssl/types.h>
-#include <openssl/crypto.h>
+//#include <openssl/bn.h>
+//#include <openssl/rand.h>
+//#include <openssl/types.h>
+//#include <openssl/crypto.h>
 #include "SHA256.h"
 #include <time.h>
 #define kappa 3
@@ -23,13 +23,11 @@ const char* E1_JSON_IN = "{\n\t\"e_1\": \"%[^\"]\",\n\t\"c_goth\": \"%[^\"]\"\n}
 const char* E2_JSON_IN = "{\n\t\"e_2\": \"%[^\"]\",\n\t\"c2_goth\": \"%[^\"]\"\n}";
 const char* SIG_STAR_JSON_IN = "{\n\t\"sig_star\": \"%[^\"]\"\n}";
 
-
-void get_rand_seed(void* buf, int len)
+//we don't use this as I was not sure about the changes to it and before it was linux specific
+/*void get_rand_seed(void* buf, int len)
 {
 	//FILE* fp;
 	void* p;
-
-	//fp = fopen("/dev/urandom", "r");
 
 	p = buf;
 	while (len>0)
@@ -45,15 +43,10 @@ void get_rand_seed(void* buf, int len)
         //printf("len: %d  ", len);
 	}
     
-   
     
-	//fclose(fp);
-   
-    
-}
+}*/
 
 void generate_g(mpz_t* n, mpz_t* n2, mpz_t* phi, mpz_t* g) {
-
 
     mpz_t i;
     mpz_init(i);
@@ -79,62 +72,42 @@ void generate_g(mpz_t* n, mpz_t* n2, mpz_t* phi, mpz_t* g) {
 void generate_r_from_group(mpz_t* mod, mpz_t* r){
     
     int len = 512;
-    mpz_t s;
+    /*mpz_t s;
 	mpz_init(s);
     void* buf;
 	buf = malloc(len);
 	get_rand_seed(buf, len);
 	mpz_import(s, len, 1, 1, 0, 0, buf);
-
-    gmp_randstate_t rand;
-    gmp_randinit_default(rand);
-    gmp_randseed(rand, s);
-
-    mpz_urandomm(*r, rand, *mod);
-    
-    gmp_randclear(rand);
-    mpz_clear(s);
-    free(buf);
-
-}
-
-void generate_r_from_bitlenght(size_t length, mpz_t* r){
-    
-    int len = 512;
-    mpz_t s;
-	mpz_init(s);
-    void* buf;
-	buf = malloc(len);
-    
-	/*get_rand_seed(buf, len);
-    printf("done");
-	mpz_import(s, len, 1, 1, 0, 0, buf);*/
-    mpz_random(s,length);
-
-    //gmp_printf("attempt rakovina: %Zd \n", s);
+    */
     gmp_randstate_t rando;
-    gmp_randinit_mt(rando);
-    //gmp_randseed(rand,s);
-    //get_rand_seed(buf, len);
-    //mpz_import(s, len, 1, 1, 0, 0, buf);
-    gmp_randseed_ui(rando, rand()*clock()*time(NULL));
+    gmp_randinit_default(rando);
+    //this is just a way we get the ranodm seed by taking a rand number with clock value and with time, this is not the best ranodm generator, but for simulation should be enough
+    gmp_randseed_ui(rando, rand() * clock() * time(NULL));
     //gmp_randseed(rand, s);
-    mpz_urandomb(*r, rando, length);
-    
-    //gmp_printf("attempt 3: %Zd \n", r);
+
+    mpz_urandomm(*r, rando, *mod);
     
     gmp_randclear(rando);
-    mpz_clear(s);
-    free(buf);
-
+    //mpz_clear(s);
+    //free(buf);
 
 }
+//we had to change the random generators, as they were linux specific before, if you plan to use this for real revisit this part as it might not be 100% safe
+void generate_r_from_bitlenght(size_t length, mpz_t* r){
 
+    gmp_randstate_t rando;
+    gmp_randinit_mt(rando);
+    
+    gmp_randseed_ui(rando, rand()*clock()*time(NULL));
+    mpz_urandomb(*r, rando, length);
+    
+    
+    gmp_randclear(rando);
+
+}
+//we had to change this function as using SSL would be problematic on windows and also it is not needen IMO as same can be done with gmp, but it works similary
 void generate_RSA_SSL(mpz_t* p, mpz_t* q, mpz_t* n, size_t size){
 
-    /*BIGNUM* p_big = BN_new();
-    BIGNUM *q_big = BN_new();
-    BIGNUM *n_big = BN_new();*/
 
     size *= 3*kappa;
 
@@ -142,7 +115,6 @@ void generate_RSA_SSL(mpz_t* p, mpz_t* q, mpz_t* n, size_t size){
     //double cpu_time_used;
     start= clock() / (CLOCKS_PER_SEC / 1000);
     generate_r_from_bitlenght( size/2+1,p);
-    
     generate_r_from_bitlenght(size/2+1,q);
     
     mpz_nextprime(*p, *p);
@@ -153,40 +125,20 @@ void generate_RSA_SSL(mpz_t* p, mpz_t* q, mpz_t* n, size_t size){
     printf("P and Q generation took %ld ms \n", (end - start));
     end = NULL;
     start = NULL;
-    //char  c{ '\0' };
-    //char* pchar{ &c };
-    //mpz_get_str(pchar, 16, *p);
-    //gmp_printf("P is: %Zd \n", p);
-    //BN_CTX *ctx = BN_CTX_secure_new();
-    //BN_generate_prime_ex2(p_big, size/2+1, 1, NULL, NULL, NULL, ctx);
-    //BN_generate_prime_ex2(q_big, size/2+1, 1, NULL, NULL, NULL, ctx);
-    /*
-    char* p_hex = BN_bn2hex(p_big);
-    char* q_hex = BN_bn2hex(q_big);
-
-    mpz_set_str(*p, p_hex, 16);
-    mpz_set_str(*q, q_hex, 16);
-    */
+    
     mpz_mul(*n, *p, *q);
-    /*
-    BN_free(p_big);
-    BN_free(q_big);
-    BN_free(n_big);
-    BN_CTX_free(ctx);
-    OPENSSL_free(p_hex);
-    OPENSSL_free(q_hex);
-    */
+    
 }
 
 
-
+//now the setup also takes the manager key and qEC of the used curve, bytecount is for conversions
 void generate_nizkpk_setup(Setup_SGM* setup, Manager_S* m_secret, uint8_t q_EC[], uint8_t manKey[], int byteCount) {
     
     //EC params
     clock_t start, end;
     mpz_inits(setup->q_EC, NULL);
     //mpz_set_str(setup->q_EC, q_EC, 16);
-    
+    //this was because there is some issues with the smallest uECC curve when converting it to uInt8_t
     if (byteCount == 20) {
         const char* q_EC = "0100000000000000000001f4c8f927aed3ca752257";
         
@@ -238,19 +190,14 @@ void generate_nizkpk_setup(Setup_SGM* setup, Manager_S* m_secret, uint8_t q_EC[]
 
     mpz_powm(setup->g_goth, setup->h_goth, rand_goth, setup->n_goth);
 
-
-
     //Secrets impl
     //modification here 
     mpz_init(m_secret->sk_m);
     mpz_import(m_secret->sk_m, byteCount, 1, sizeof(manKey[0]), 0, 0, manKey);
     //gmp_printf("attempt 3: %Zd \n", m_secret->sk_m);
     //generate_r_from_group(&setup->q_EC, &m_secret->sk_m);
-
     mpz_inits(setup->g, setup->h, setup->n2, m_secret->phi_n, NULL);
-
     mpz_add_ui(setup->h, setup->n, 1);
-
     mpz_pow_ui(setup->n2, setup->n, 2);
     mpz_sub_ui(p_n, p_n, 1);
     mpz_sub_ui(q_n, q_n, 1);
@@ -262,8 +209,6 @@ void generate_nizkpk_setup(Setup_SGM* setup, Manager_S* m_secret, uint8_t q_EC[]
 
     mpz_init(setup->n_half);
     mpz_fdiv_q(setup->n_half, setup->n, two);
-
-    //printf("generation next ");
     //G generation
     clock_t startGen = clock() / (CLOCKS_PER_SEC / 1000);
     generate_g(&setup->n, &setup->n2, &m_secret->phi_n, &setup->g);
@@ -309,7 +254,7 @@ E_1 generate_e1(Setup_SGM* setup, Manager_S* m_secret){
     return e1;
 
 }
-
+//changed to also take client key and bytecount for conversion, also there was a mistake in cGoth computation, it was obvious only after the PK impl.
 E_2 generate_e2(Setup_SGM* setup, Sender_S* s_secret, E_1* e1, uint8_t client_sec[], int byteCount) {
 
     E_2 e2;
@@ -357,7 +302,7 @@ E_2 generate_e2(Setup_SGM* setup, Sender_S* s_secret, E_1* e1, uint8_t client_se
 
     mpz_inits(e2.c2_goth, NULL);
     mpz_powm(e2.c2_goth, setup->g_goth, s_secret->sk_i, setup->n_goth);
-    mpz_powm(e22, setup->h_goth, s_secret->r_bar, setup->n_goth);
+    mpz_powm(e22, setup->h_goth, s_secret->r_bar, setup->n_goth); //I modified r_bar instead of sk_i
     mpz_mul(e2.c2_goth, e2.c2_goth, e22);
     mpz_mod(e2.c2_goth, e2.c2_goth, setup->n_goth);
 
@@ -366,7 +311,7 @@ E_2 generate_e2(Setup_SGM* setup, Sender_S* s_secret, E_1* e1, uint8_t client_se
     return e2;
 
 }
-
+//did not touch or use this tbh
 E_2 generate_e2_parallel(Setup_SGM* setup, Sender_S* s_secret, E_1* e1){
 
     E_2 e2;
@@ -449,14 +394,11 @@ Sig_star decrypt_e2(Setup_SGM* setup, Manager_S* m_secret, E_2* e2){
 
     mpz_clear(phi_inv);
 
-
-
-
     return sig_star;
 
 }
 
-
+//this was just a test function 
 int verify_sig(Sig_star* sig, Manager_S* m_secret, Sender_S* s_secret, Setup_SGM* setup){
 
 
@@ -486,6 +428,7 @@ int verify_sig(Sig_star* sig, Manager_S* m_secret, Sender_S* s_secret, Setup_SGM
     }
 
 }
+//test for interactive version of the PK
 void ZK_compute_Ts_Issuer(Manager_S* man_sec, Setup_SGM* setup, ZK_man *zk, ZK_man_private *zk_private) {
     mpz_t phi_n2;
     mpz_inits(zk->t1,zk->t2,zk_private->rho1, zk_private->rho2, zk_private->rho3,phi_n2,NULL);
@@ -512,13 +455,13 @@ void ZK_compute_Ts_Issuer(Manager_S* man_sec, Setup_SGM* setup, ZK_man *zk, ZK_m
     mpz_mod(zk->t2, zk->t2, setup->n_goth);
     mpz_clears(mid2,phi_n2,NULL);
 }
-
+//this was just test for interactive version
 void generate_E_for_PK(Setup_SGM* setup, ZK_man *zk) {
     mpz_init(zk->e);
     //generate_r_from_group(&setup->n_goth, &zk->e);
     generate_r_from_bitlenght(1024, &zk->e);
 }
-
+//also part of the tested interactive PK
 void ZK_compute_Zs_Issuer(Manager_S* m_secret, Setup_SGM* setup, ZK_man* zk, ZK_man_private* zk_private) {
     mpz_inits(zk->z1, zk->z2, zk->z3, NULL);
 
@@ -534,7 +477,7 @@ void ZK_compute_Zs_Issuer(Manager_S* m_secret, Setup_SGM* setup, ZK_man* zk, ZK_
     mpz_add(zk->z3, zk->z3, zk_private->rho3);
     //mpz_mod(zk->z3, zk->z3, setup->n_goth);
 }
-
+//the issuer PK non interactive version
 void ZK_issuer_create(Manager_S* man_sec, Setup_SGM* setup, ZK_man* zk, ZK_man_private* zk_private) {
     mpz_t phi_n2;
     mpz_inits(zk->t1, zk->t2, zk_private->rho1, zk_private->rho2, zk_private->rho3, phi_n2, NULL);
@@ -589,14 +532,11 @@ void ZK_issuer_create(Manager_S* man_sec, Setup_SGM* setup, ZK_man* zk, ZK_man_p
     placeholder = eHash.digest();
     free(t1_uint8);
     free(t2_uint8);
+    //here we have how to import back
     mpz_import(zk->e, 32,1, sizeof(placeholder[0]), 0, 0, placeholder);
 
-    //here we have how to import back
-    /*mpz_t t12;
-    mpz_init(t12);
-    mpz_import(t12, (sz + 7) / 8, 1, sizeof(t1_uint8[0]), 0, 0, t1_uint8);
-    if (mpz_cmp(zk->t1, t12) == 0)
-        printf("fffffffffffffffff");*/
+    
+    
     
     mpz_inits(zk->z1, zk->z2, zk->z3, NULL);
 
@@ -614,7 +554,7 @@ void ZK_issuer_create(Manager_S* man_sec, Setup_SGM* setup, ZK_man* zk, ZK_man_p
 }
 
 
-
+//function to check the issuer PK
 bool check_issuer_proof_NI(Setup_SGM* setup, ZK_man* zk, E_1* e_1) {
     mpz_t hz1, gz2, frac, c1, hn2, einv;
     mpz_inits(hz1, gz2, frac, c1, hn2, einv, NULL);
@@ -693,9 +633,8 @@ bool check_issuer_proof_NI(Setup_SGM* setup, ZK_man* zk, E_1* e_1) {
         return false;
     }
        
-
 }
-
+//compute the user PK
 void generate_ZK_user(Setup_SGM* setup, ZK_user* zk, Sender_S * user_sk, E_1* e1, E_2* e2, uECC_Curve curve) {
 
     mpz_t rhoS, rho1, rho2, rhoAph, rhoU, rhoGoth;
@@ -755,7 +694,6 @@ void generate_ZK_user(Setup_SGM* setup, ZK_user* zk, Sender_S * user_sk, E_1* e1
     mpz_powm(help, setup->h_goth, rhoU, setup->n_goth);
 
     //mpz_invert(help, help, setup->n_goth);//made this up
-
     mpz_mul(c3, c3, help);
     mpz_mod(c3, c3, setup->n_goth);
     //compute c4 on curve
@@ -765,9 +703,7 @@ void generate_ZK_user(Setup_SGM* setup, ZK_user* zk, Sender_S * user_sk, E_1* e1
     uECC_word_t* rhoS_native = new uECC_word_t[nativeNCount]();//converting of rhoS to mciroECC
     uECC_vli_bytesToNative(rhoS_native, rhoS_uint8, byteCount);
     uECC_point_mult(e4_point, gCurve, rhoS_native, curve);
-    //uint8_t* c4_uint8 = (uint8_t*)malloc(byteCount *2* sizeof(uint8_t));
-    //uECC_vli_nativeToBytes(c4_uint8, byteCount * 2, e4_point); //c4 to uint we can hash that
-    //zk->e4_point = e4_point;
+   
 
     //these were just for check
     /*mpz_inits(zk->c1, zk->c2, zk->c3, NULL);
@@ -804,7 +740,6 @@ void generate_ZK_user(Setup_SGM* setup, ZK_user* zk, Sender_S * user_sk, E_1* e1
 
     mpz_mul(zk->z_aph, zk->e, sk_i_aph);
     mpz_add(zk->z_aph, zk->z_aph, rhoAph);
-
 
     mpz_clears(c1, c2, c3, help, alpha, beta, sk_i_aph, u,NULL);
 
@@ -852,11 +787,11 @@ bool check_PK_user(Setup_SGM* setup, ZK_user *zk, E_2* e2, E_1 * e1, uECC_Curve 
 
     mpz_powm(c3, e2->c2_goth, zk->z1, setup->n_goth);
     mpz_invert(help, setup->g_goth, setup->n_goth);
-    mpz_powm(help, help, zk->z_aph, setup->n_goth);//is this right?
+    mpz_powm(help, help, zk->z_aph, setup->n_goth);
     mpz_mul(c3,c3,help);
 
     mpz_powm(help, setup->h_goth, zk->zu, setup->n_goth);
-    //mpz_invert(help,help,setup->n_goth);//i made this shit up
+    
 
     mpz_mul(c3,c3,help);
     mpz_mod(c3, c3, setup->n_goth);
@@ -919,7 +854,7 @@ bool check_PK_user(Setup_SGM* setup, ZK_user *zk, E_2* e2, E_1 * e1, uECC_Curve 
 
     
 }
-
+//hashing for the userPK
 void hashE(mpz_t* e, mpz_t c1, mpz_t c2, mpz_t c3, uECC_word_t* c4, const wordcount_t byteCount) {
     SHA256 eHash;
     uint8_t* placeholder = new uint8_t[32]();
@@ -957,7 +892,7 @@ void hashE(mpz_t* e, mpz_t c1, mpz_t c2, mpz_t c3, uECC_word_t* c4, const wordco
     mpz_init(*e);
     mpz_import(*e, 32, 1, sizeof(placeholder[0]), 0, 0, placeholder);
 }
-
+//these serialize were here before, i did not change them so they should probably be remade if you want to use JSON, since the sctructs now have more stuff
 int JSON_serialize_Setup_par(Setup_SGM* setup){
 
     FILE* fp;
