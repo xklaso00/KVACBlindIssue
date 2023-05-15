@@ -414,17 +414,17 @@ void setup()
 
         printf("The declare algorithm is done, it took %f ms \n", (time_taken));
         
-        clock_t startVer = clock() ;
+        clock_t startVer = clock() / (CLOCKS_PER_SEC / 1000);
         
         bool passed = verifyModified(&parameters, e, nonce, &s_m_list, s_r, sigma_A, &x_list, &m_list,S_k);
-        clock_t endVer = clock();
+        clock_t endVer = clock() / (CLOCKS_PER_SEC / 1000);
         
         time_taken = endVer-startVer; 
         
 
         printf(passed ? "Result of KVAC verification: PASSED" : " Result of KVAC verification: FAILED");
         printf("\n");
-        printf("Verification took %f s.\n",(time_taken));
+        printf("Verification took %f ms.\n",(time_taken));
        
 
 
